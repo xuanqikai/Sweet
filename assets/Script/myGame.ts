@@ -15,6 +15,7 @@ export default class myGame extends cc.Component {
     //当前地图中物体值信息
     private CurMapValue:Array<Array<any>> = new Array<Array<any>>();
     private CurMapNode:Array<Array<cc.Node>>  = new Array<Array<cc.Node>>();
+    private CurSelectPos:Array<cc.Vec2>  = new Array<cc.Vec2>();
     // private CurMapValue1:[Number];
     // private CurMapValue:number[][];
     // private CurMapNode:cc.Node[][];
@@ -29,6 +30,7 @@ export default class myGame extends cc.Component {
     private objPoolSize = 0; 
     private ObjPool:cc.NodePool = null;
     private touchPos = cc.v2(-1,-1);
+    private num = 0;
 
 
     //***********************************************初始化脚本***********************************************//
@@ -49,7 +51,6 @@ export default class myGame extends cc.Component {
            this.CurMapNode[i] = [];
         }
         this.CurMapNode.push([]);
-
         if(this.objParentNode || !cc.isValid(this.objParentNode))
         {
             this.objParentNode =new cc.Node();
@@ -58,6 +59,7 @@ export default class myGame extends cc.Component {
         }
         this.node.addChild(this.objParentNode);
         //游戏内物体块父类
+        this.node.setAnchorPoint(cc.p(0,0));
         this.node.setPosition((Global.width-Global.G_objNX*Global.G_objSizeW)/2,(Global.height-Global.G_objNY*Global.G_objSizeH)/2);
         this.InitObjectPool();
         this.isGameRunning = false;
@@ -66,26 +68,27 @@ export default class myGame extends cc.Component {
     start () 
     {
         console.log("myGame---------start");
+        this.num = 0;
     }
     onEnable()
     {
-        this.GameStart();
+        // this.GameStart();
     }
     update(dt:number)
     {
-        if(!this.isGameRunning)
-        {
-            return;
-        }
-        if(this.IsAllObjectStabilization == 0)
-        {
-            if(this.GetCurObject() != null && this.GetCurObject().getComponent('picObject').pos.y == Global.G_objNY-1)
-            {
-                this.GameOver();
-                return;
-            }
-            this.CreateObject();
-        }
+        // if(!this.isGameRunning)
+        // {
+        //     return;
+        // }
+        // if(this.IsAllObjectStabilization == 0)
+        // {
+        //     if(this.GetCurObject() != null && this.GetCurObject().getComponent('obj').pos.y == Global.G_objNY-1)
+        //     {
+        //         this.GameOver();
+        //         return;
+        //     }
+        //     this.CreateObject();
+        // }
     }
     onDestroy()
     {
@@ -101,8 +104,16 @@ export default class myGame extends cc.Component {
     //*************************************************触碰事件*********************************************//
     touchStart (event)
     {
+        //转换为本节点位置
+        ~~~
+        if(event.getLocation().x<0 || event.getLocation().y<0)
+        {
+            return;
+        }
         console.log(" touchstart (event) 000  ");
         this.touchPos.set(event.getLocation());
+        this.ClearSelectPos();
+        this.JudgeSelectObject(event.getLocation());
     }
     //滑动事件
     touchMove (event)
@@ -111,31 +122,32 @@ export default class myGame extends cc.Component {
         {
             return;
         }
-        // console.log(" touchMove (event) 000  ");
-        const _l = 20; //滑动距离超过20才判定为滑动
-        if(this.istouchedMove>=_l)
-        {
-            return;
-        }
-        let _curPos = event.getLocation();
-        // console.log(" touchMove (event)  ");
-        var move_x = _curPos.x - this.touchPos.x;
-        var move_y = _curPos.y - this.touchPos.y;
+        this.JudgeSelectObject(event.getLocation());
+        // // console.log(" touchMove (event) 000  ");
+        // const _l = 20; //滑动距离超过20才判定为滑动
+        // if(this.istouchedMove>=_l)
+        // {
+        //     return;
+        // }
+        // let _curPos = event.getLocation();
+        // // console.log(" touchMove (event)  ");
+        // var move_x = _curPos.x - this.touchPos.x;
+        // var move_y = _curPos.y - this.touchPos.y;
         
-        this.istouchedMove = Math.abs(move_x)>Math.abs(move_y)? Math.abs(move_x):Math.abs(move_y);
-        if (Math.abs(move_x) >= _l)  
-        {
-            console.log("move_x  >= _l ------------------------------------------ ");
-            let _dir = move_x>0?1:-1;
-            //左右移动
-            this.PicMove(_dir);
-            return;
-        } 
-        if (move_y <= -_l)
-        {
-            //向下加速
-            this.PicMove(0);
-        }
+        // this.istouchedMove = Math.abs(move_x)>Math.abs(move_y)? Math.abs(move_x):Math.abs(move_y);
+        // if (Math.abs(move_x) >= _l)  
+        // {
+        //     console.log("move_x  >= _l ------------------------------------------ ");
+        //     let _dir = move_x>0?1:-1;
+        //     //左右移动
+        //     this.PicMove(_dir);
+        //     return;
+        // } 
+        // if (move_y <= -_l)
+        // {
+        //     //向下加速
+        //     this.PicMove(0);
+        // }
 
         
     }
@@ -146,15 +158,16 @@ export default class myGame extends cc.Component {
         {
             return;
         }
+        if(this.ClearSelectPos.length>1)
+        {
+            this.RemoveSelectPos();
+        }
+        else
+        {
+            this.ClearSelectPos();
+        }
         this.touchPos.x =-1;
         this.touchPos.y =-1;
-        if(this.istouchedMove >0)
-        {
-            this.istouchedMove =0;
-            return;
-        }
-        //向下加速
-        this.PicMove(0);
         console.log(" touchEnd (event)  ");
     }
     //*****************************************************对象池***********************************************//
@@ -183,23 +196,23 @@ export default class myGame extends cc.Component {
             
         // // }
         // // _obj = this.ObjPool.get();
-        // if (this.ObjPool.size() > 0) 
-        // { // 通过 size 接口判断对象池中是否有空闲的对象
-        //     // console.log("this.ObjPool.size() ppppis --- "+this.ObjPool.size());
+        if (this.ObjPool.size() > 0) 
+        { // 通过 size 接口判断对象池中是否有空闲的对象
+            // console.log("this.ObjPool.size() ppppis --- "+this.ObjPool.size());
              
-        //     _obj = this.ObjPool.get();
-        //     // console.log("this.ObjPool.size() is --- "+this.ObjPool.size());
-        // } 
-        // else 
-        // { // 如果没有空闲对象，也就是对象池中备用对象不够时，我们就用 cc.instantiate 重新创建
-        //     _obj = cc.instantiate(this.objPrefab);
-        // }
-        _obj = cc.instantiate(this.objPrefab);
+            _obj = this.ObjPool.get();
+            // console.log("this.ObjPool.size() is --- "+this.ObjPool.size());
+        } 
+        else 
+        { // 如果没有空闲对象，也就是对象池中备用对象不够时，我们就用 cc.instantiate 重新创建
+            _obj = cc.instantiate(this.objPrefab);
+        }
+        // _obj = cc.instantiate(this.objPrefab);
         return _obj;
     }
     PoolRecycleObject(obj:cc.Node)
     {
-        // this.ObjPool.put(obj); // 通过 putInPool 接口放入对象池
+        this.ObjPool.put(obj); // 通过 putInPool 接口放入对象池
     }
     DestroyObjectPool()
     {
@@ -214,6 +227,7 @@ export default class myGame extends cc.Component {
         //当前局出现过的最大等级值
         this.CurTopValue = 1;
 
+        this.removeAllObject();
         //当前地图中物体值信息
         for (let y = 0; y < Global.G_objNY; y++) 
         {
@@ -223,12 +237,8 @@ export default class myGame extends cc.Component {
                 this.CurMapValue[y][x] = 0;
                 this.CurMapNode[y][x] = null;
             }
-            
         }
-        
         // this.CurMapValue[0][1] = 2;
-
-        this.objParentNode.removeAllChildren();
         // this.CreateObject();
         this.istouchedMove =0;
         this.isGameRunning = true;
@@ -247,6 +257,7 @@ export default class myGame extends cc.Component {
         //     console.log("cc.Node.EventType.TOUCH_MOVE");
             
         // }, this);
+        this.JudgeAutoMove();
 
     }
     GameOver()
@@ -257,6 +268,77 @@ export default class myGame extends cc.Component {
         this.isGameRunning = false;
     }
     //***********************************************自定义方法***********************************************//
+    JudgeSelectObject(_p:cc.Vec2)
+    {
+        let _mapos = cc.p(0,0); 
+        _mapos.set(_p);
+        console.log("_p ------------------ "+_p.x+","+_p.y);
+        _mapos.x =  Math.floor(_mapos.x /Global.G_objSizeW);
+        _mapos.y =  Math.floor(_mapos.y /Global.G_objSizeH);
+        console.log("_mapos ------------------ "+_mapos.x+","+_mapos.y);
+        let obj = this.GetMapObjNode(_mapos);
+        if(null==obj)
+        {
+            return;
+        }
+        if(!obj.getComponent('obj').CanToucheMe())
+        {
+            return;
+        }
+        if(this.CurSelectPos.length>1)
+        if(_mapos.equals(this.CurSelectPos[this.CurSelectPos.length - 2]))
+        {
+            this.ClearSelectPos(true);
+            this.ClearSelectPos(true);
+            return;
+        }
+        if(this.GetMapDate(_mapos) != this.GetMapDate(this.CurSelectPos[0]))
+        {
+            return;
+        }
+        obj.getComponent('obj').changeState(3);
+        this.CurSelectPos.push(_mapos.clone());
+    }
+    ClearSelectPos(onlylast = false)
+    {
+        let _start = cc.p(0,0);
+        
+        while(this.CurSelectPos.length >0)
+        {
+            let _p= cc.p(0,0);
+            _p.set(this.CurSelectPos.pop());
+
+            let obj = this.GetMapObjNode(_p);
+            if(obj)
+            {
+                let _state = obj.getComponent('obj').GetState();
+                if(3 == _state)
+                {
+                    obj.getComponent('obj').changeState(2);
+                }
+            }
+            if(onlylast)
+            {
+                break;
+            }
+        }
+    }
+    RemoveSelectPos()
+    {
+        let l = this.CurSelectPos.length;
+        while(l >0)
+        {
+            let _p= cc.p(0,0);
+            _p.set(this.CurSelectPos.pop());
+
+            let obj = this.GetMapObjNode(_p);
+            this.DestoryObject(_p);
+        }
+        if(l >0)
+        {
+            this.JudgeAutoMove();
+        }
+    }
     //获取当前下落物体
     GetCurObject():cc.Node
     {
@@ -277,7 +359,7 @@ export default class myGame extends cc.Component {
     {
         if(_p.x<0 || _p.x >Global.G_objNX || _p.y<0 || _p.y >Global.G_objNY )
         {
-            console.log("Error: _p ------------------ "+_p.x+","+_p.y);
+            console.log("Error1: _p ------------------ "+_p.x+","+_p.y);
             return;
         }
         this.CurMapValue[_p.y][_p.x] = _value;
@@ -288,7 +370,7 @@ export default class myGame extends cc.Component {
     {
         if(_p.x<0 || _p.x >Global.G_objNX || _p.y<0 || _p.y >Global.G_objNY )
         {
-            console.log("Error: _p ------------------ "+_p.x+","+_p.y);
+            console.log("Error2: _p ------------------ "+_p.x+","+_p.y);
             return 0;
         }
         // console.log("----------------------CurMapValue-------------------");
@@ -302,34 +384,44 @@ export default class myGame extends cc.Component {
     {
         if(_p.x<0 || _p.x >Global.G_objNX || _p.y<0 || _p.y >Global.G_objNY )
         {
-            console.log("Error: _p ------------------ "+_p.x+","+_p.y);
+            console.log("Error3: _p ------------------ "+_p.x+","+_p.y);
             return null;
         }
         return this.CurMapNode[_p.y][_p.x];
     }
     //创建新物体
-    CreateObject()
+    CreateObject(_x:number):cc.Node
     {
+        this.num++;
         // 使用给定的模板在场景中生成一个新节点
         let obj = this.GetObjectByPool();
         console.log("myGame---------obj objPrefab: "+this.objPrefab);
         console.log("myGame---------obj value: "+obj);
-        console.log("myGame---------obj node: "+this.node);
+        console.log("myGame---------obj node: "+ this.objParentNode);
+        console.log("myGame---------obj num: "+ this.num);
+        
         // this.node.addChild(obj);
         // 将新增的节点添加到 Canvas 节点下面
         this.objParentNode.addChild(obj);
-        obj.getComponent('picObject').Birth(this.node);
+        console.log("myGame---------obj num: "+ this.num);
+        obj.getComponent('obj').Birth(this.node,_x);
+        console.log("myGame---------obj num: "+ this.num);
         this.curObj =  obj;
         this.IsAllObjectStabilization++;
         console.log("myGame---------CreateObject()");
+        return obj;
     }
     //销毁物体
     DestoryObject(_p:cc.Vec2)//(obj:cc.Node)
     {
         // obj =  this.curObj;
         let obj =this.GetMapObjNode(_p);
-        // console.log("myGame---------obj value: "+obj.getComponent('picObject').myValue);
-        obj.getComponent('picObject').Die();
+        if(null == obj)
+        {
+            return;
+        }
+        // console.log("myGame---------obj value: "+obj.getComponent('obj').myValue);
+        obj.getComponent('obj').Die();
         this.UpdateMapDate(0,_p,null);
         
         console.log("myGame---------obj _p: "+_p.y);
@@ -337,10 +429,54 @@ export default class myGame extends cc.Component {
         // this.objParentNode.removeChild(obj);
         
     }
+    removeAllObject()
+    {
+        for (let y = 0; y < Global.G_objNY; y++) 
+        {
+            for (let x = 0; x < Global.G_objNX; x++) 
+            {
+                this.DestoryObject(cc.p(x,y));  
+            }
+        }
+        this.objParentNode.removeAllChildren();
+    }
+    //判断自动移动_x:指定行
+    JudgeAutoMove(_x:number = -1)
+    {
+        let _start =0;
+        let _end =Global.G_objNX;
+        if(-1 != _x)
+        {
+            _start = _x;
+            _end = _start+1;
+        }
+        let moveH = 0; 
+        for (let x = _start; x < _end; x++)
+        {
+            moveH = 0;
+            for (let y = 0; y < Global.G_objNY; y++)
+            {
+                let obj = this.CurMapNode[y][x];
+                if(null == obj )
+                {
+                    moveH++;
+                }
+                else
+                {
+                    obj.getComponent('obj').Move(moveH);
+                }
+            }
+            for (let y = 0; y < moveH; y++)
+            {
+                let obj = this.CreateObject(x);
+                obj.getComponent('obj').Move(moveH-y,y);
+            }
+        }
+    }
     //移动方向
     PicMove(dir:number)
     {
-       
+        
     }
     //**********************************************************************************************//
     

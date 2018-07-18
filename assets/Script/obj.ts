@@ -9,10 +9,14 @@ const valueRange = 8;
 //生成的等级概率
 const RangeProb =[16,16,16,16,14,10,6,4];
 @ccclass
-export default class picObject extends cc.Component {
+export default class obj extends cc.Component {
 
     @property(cc.Sprite)
     mySprite: cc.Sprite = null;
+
+    @property([cc.SpriteFrame])
+    spriteFrame: Array<cc.SpriteFrame> = [];
+
     //左下角位置（即最小位置坐标）
     MinPos = cc.p(0,0);
 
@@ -20,18 +24,20 @@ export default class picObject extends cc.Component {
     myState = 0;
     //所在格子位置
     pos = cc.p(-1,-1);
-    //移动速度
-    moveSpeed = cc.v2(1,-1);
+    //下落速度（每格时间）
+    moveSpeed = 0.05;
     //自身代表的级别值(即2048中2的n次方)
     myKind = 1; 
-
     gameScene:cc.Node = null;
+    //偏移量
+    offset = cc.p(Global.G_objSizeW/2,Global.G_objSizeH/2);
+
 
 
     start () {
         //绑定触碰事件
-        console.log("picObject---------start");
-        // this.myState = 0;
+        // console.log("picObject---------start");
+        this.myState = 0;
         
         // let _ppp = 0;
         // console.log("_ppp000 **** ("+_ppp+")");
@@ -76,9 +82,26 @@ export default class picObject extends cc.Component {
         // console.log("picObject---------upddate()");  
     }
     //移动：0为下落几个位置
-    Move(n:number)
+    Move(n:number,_delay:number =0)
     {
-        
+        this.changeState(1);
+        let _time = this.moveSpeed *n;
+        this.pos.y -= n;
+        let curPos = cc.p(this.pos.x*Global.G_objSizeW,this.pos.y*Global.G_objSizeH).add(this.offset);
+        let dt = cc.delayTime(_delay * this.moveSpeed);
+        //让玩家移动到点击位置
+        var action = cc.moveTo(_time,curPos);
+        // cc.log("移动时间： ",_time);
+        //移动前停止所有动作
+        this.node.stopAllActions();
+        //移动完成过后,更改状态
+        this.node.runAction(cc.sequence(dt,action, cc.callFunc(function(){
+            ()=>{
+                this.changeState(2);
+            }
+             
+         })));
+         this.changeState(2);          
     }
     //更改状态(coerce 是否强制更新状态)
     changeState(_state:number,coerce:boolean = false)
@@ -100,26 +123,46 @@ export default class picObject extends cc.Component {
         {
             //把当前节点加入地图信息
             this.GetParentScript().UpdateMapDate(this.myKind,this.pos,this.node);
+            this.node.setScale(1.0);
             
         }
-        else if(4 == _state || 1 == _state)
+        else if(3 == _state)
+        {
+            //把当前节点加入地图信息
+            this.node.setScale(1.2);
+            
+        }
+        else if(4 == _state || 1 == _state || 0 == _state)
         {
             //把当前节点从地图信息清除
             this.GetParentScript().UpdateMapDate(0,this.pos,null);
+            
         }
+        console.log(" state is :"+_state);
+        
+    }
+    GetState():number
+    {
+        return this.myState;
+    }
+    CanToucheMe()
+    {
+        if(2 == this.myState || 3 == this.myState)
+        {
+            return true;
+        }
+        return false;
     }
     //出生
-    Birth(_game:cc.Node)
+    Birth(_game:cc.Node,_x:number)
     {
         this.gameScene = _game;
 
         console.log("picObject---------getgameScene");
-        //状态：0不存在，1准备下落（提示），2下落状态，3落地状态
+        //状态
         this.myState = 0;
         //所在格子位置
-        this.pos = cc.p(-1,-1);
-        //移动速度
-        // this.moveSpeed = cc.v2(1,-1);
+        this.pos = cc.p(_x,Global.G_objNY);
         /*
         //随机生成级别值
         let _top = this.GetParentScript().GetCurTopValue();
@@ -155,13 +198,13 @@ export default class picObject extends cc.Component {
             num -= RangeProb[index];
         }
         */
-        let _value =  Math.random()*Global.G_objKind +1;
-        this.SetmyKind(_value);
-        this.changeState(1);
-        //设置位置
-        let _p = this.pos.clone();
+        let _value =  Math.floor(Math.random()*Global.G_objKind +1);
+        this.SetMyKind(_value);
+        // this.changeState(0);
+        //设置位置 this.pos.y*Global.G_objSizeH
+        let curPos = cc.p(this.pos.x*Global.G_objSizeW,Global.height).add(this.offset);
         // let _curPos = this.MinPos.add(_p.mul(Global.g));
-        // this.node.setPosition(_curPos);
+        this.node.setPosition(curPos);
         console.log("picObject---------Birth() _value:"+_value);
     }
     //节点消失
@@ -171,8 +214,9 @@ export default class picObject extends cc.Component {
         this.changeState(0);
     }
     //设置自身级别值
-    SetmyKind(_v:number)
+    SetMyKind(_v:number)
     {
+        _v = Math.floor(_v);
         this.myKind = _v;
         console.log("picObject---------SetmyKind : _value: "+_v);
         //更换为对应图片
@@ -190,8 +234,8 @@ export default class picObject extends cc.Component {
         {
             return;
         }
-        let str = 'res/textures/obj'+_v +'.png';
-        this.mySprite.spriteFrame.setTexture(cc.url.raw(str));
+        // let str = 'obj'+_v +'.png';
+        this.mySprite.spriteFrame = this.spriteFrame[_v-1];
     }
     //获取父节点的脚本信息
     GetParentScript(): any
