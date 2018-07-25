@@ -37,7 +37,6 @@ export default class obj extends cc.Component {
     start () {
         //绑定触碰事件
         // console.log("picObject---------start");
-        this.myState = 0;
         
         // let _ppp = 0;
         // console.log("_ppp000 **** ("+_ppp+")");
@@ -139,13 +138,14 @@ export default class obj extends cc.Component {
             
         }
         console.log(" state is :"+_state);
+        console.log(" this.myState is :"+this.myState);
         
     }
     GetState():number
     {
         return this.myState;
     }
-    CanToucheMe()
+    CanToucheMe():boolean
     {
         if(2 == this.myState || 3 == this.myState)
         {
@@ -200,7 +200,7 @@ export default class obj extends cc.Component {
         */
         let _value =  Math.floor(Math.random()*Global.G_objKind +1);
         this.SetMyKind(_value);
-        // this.changeState(0);
+        this.changeState(0);
         //设置位置 this.pos.y*Global.G_objSizeH
         let curPos = cc.p(this.pos.x*Global.G_objSizeW,Global.height).add(this.offset);
         // let _curPos = this.MinPos.add(_p.mul(Global.g));

@@ -19,6 +19,10 @@ export class Global
     static G_objNX:number = 5;
     static G_objNY:number = 5;
     //宽高
-    static G_objSizeW:number = 94;
-    static G_objSizeH:number = 102;
+    static G_objSizeW:number = 105;
+    static G_objSizeH:number = 120;
+    //最高分
+    static G_topScore:number = 0;
+    //声音开关
+    static G_musicOn = true;
 }

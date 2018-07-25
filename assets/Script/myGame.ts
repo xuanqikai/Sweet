@@ -2,11 +2,20 @@ const {ccclass, property} = cc._decorator;  // 从 cc._decorator 命名空间中
 
 import {Global,Scene}  from './Global';
 import obj from './obj';
+import main from './main';
 @ccclass
 export default class myGame extends cc.Component {
 
     @property(cc.Prefab)
     objPrefab: cc.Prefab = null;
+    @property(cc.Label)
+    scoreLabel: cc.Label = null;
+    @property(cc.Label)
+    highscoreLabel: cc.Label = null;
+
+    //游戏音效
+    @property([cc.AudioSource])
+    Audio_bika:Array<cc.AudioSource> = [];
 
     //是否所有物体进入稳定状态
     IsAllObjectStabilization = 0;
@@ -31,6 +40,12 @@ export default class myGame extends cc.Component {
     private ObjPool:cc.NodePool = null;
     private touchPos = cc.v2(-1,-1);
     private num = 0;
+    private Score = 0;
+    private doubleScore = false;
+    private curAudiobikaID = -1;
+    //音效
+    private AudioBika0:Array<cc.AudioSource> = new Array<cc.AudioSource>();
+    private pointBika0 = 0;
 
 
     //***********************************************初始化脚本***********************************************//
@@ -61,18 +76,24 @@ export default class myGame extends cc.Component {
         //游戏内物体块父类
         this.node.setAnchorPoint(cc.p(0,0));
         this.node.setPosition((Global.width-Global.G_objNX*Global.G_objSizeW)/2,(Global.height-Global.G_objNY*Global.G_objSizeH)/2);
+        this.node.setContentSize(Global.G_objNX*Global.G_objSizeW,Global.G_objNY*Global.G_objSizeH);
         this.InitObjectPool();
         this.isGameRunning = false;
+        this.Score = 0;
+        this.doubleScore = false;
+        this.curAudiobikaID =-1;
+        this.CreateBikaAudio();
         
     }
     start () 
     {
         console.log("myGame---------start");
         this.num = 0;
+        this.GameStart();
     }
     onEnable()
     {
-        // this.GameStart();
+        console.log("myGame---------onEnable");
     }
     update(dt:number)
     {
@@ -105,24 +126,29 @@ export default class myGame extends cc.Component {
     touchStart (event)
     {
         //转换为本节点位置
-        ~~~
-        if(event.getLocation().x<0 || event.getLocation().y<0)
+        let loc = this.node.convertToNodeSpace(event.getLocation());
+        if(loc.x<0 || loc.y<0)
         {
             return;
         }
         console.log(" touchstart (event) 000  ");
-        this.touchPos.set(event.getLocation());
+        this.touchPos.set(loc);
         this.ClearSelectPos();
-        this.JudgeSelectObject(event.getLocation());
+        this.JudgeSelectObject(loc);
     }
     //滑动事件
     touchMove (event)
     {
-        if(this.touchPos.x<0 || this.touchPos.y<0)
+        if(this.touchPos.x<0 || this.touchPos.y<0 )
         {
             return;
         }
-        this.JudgeSelectObject(event.getLocation());
+        let loc = this.node.convertToNodeSpace(event.getLocation());
+        if(loc.x<0 || loc.y<0)
+        {
+            return;
+        }
+        this.JudgeSelectObject(loc);
         // // console.log(" touchMove (event) 000  ");
         // const _l = 20; //滑动距离超过20才判定为滑动
         // if(this.istouchedMove>=_l)
@@ -158,7 +184,12 @@ export default class myGame extends cc.Component {
         {
             return;
         }
-        if(this.ClearSelectPos.length>1)
+        // let loc = this.node.convertToNodeSpace(event.getLocation());
+        // if(loc.x<0 || loc.y<0)
+        // {
+        //     return;
+        // }
+        if(this.CurSelectPos.length>1)
         {
             this.RemoveSelectPos();
         }
@@ -169,6 +200,12 @@ export default class myGame extends cc.Component {
         this.touchPos.x =-1;
         this.touchPos.y =-1;
         console.log(" touchEnd (event)  ");
+    }
+    touchCancel(event)
+    {
+        this.ClearSelectPos();
+        this.touchPos.x =-1;
+        this.touchPos.y =-1;
     }
     //*****************************************************对象池***********************************************//
     InitObjectPool()
@@ -227,45 +264,70 @@ export default class myGame extends cc.Component {
         //当前局出现过的最大等级值
         this.CurTopValue = 1;
 
-        this.removeAllObject();
-        //当前地图中物体值信息
-        for (let y = 0; y < Global.G_objNY; y++) 
-        {
-            for (let x = 0; x < Global.G_objNX; x++) 
-            {
-                //清空地图上信息
-                this.CurMapValue[y][x] = 0;
-                this.CurMapNode[y][x] = null;
-            }
-        }
+        this.ResetObject();
         // this.CurMapValue[0][1] = 2;
         // this.CreateObject();
         this.istouchedMove =0;
-        this.isGameRunning = true;
-        //绑定触碰事件
-        this.node.on(cc.Node.EventType.TOUCH_START,this.touchStart, this);
-        this.node.on(cc.Node.EventType.MOUSE_DOWN,this.touchStart, this);
+        this.EnabledGame();
         
-        this.node.on(cc.Node.EventType.TOUCH_MOVE,this.touchMove, this);
-        this.node.on(cc.Node.EventType.MOUSE_MOVE,this.touchMove, this);
-        // this.node.on(cc.Node.EventType.TOUCH_START,function(){
-        //     console.log("cc.Node.EventType.TOUCH_START");
-            
-        // }, this);
-        this.node.on(cc.Node.EventType.TOUCH_END,this.touchEnd, this);
         // this.node.on(cc.Node.EventType.TOUCH_MOVE,function(){
         //     console.log("cc.Node.EventType.TOUCH_MOVE");
             
         // }, this);
-        this.JudgeAutoMove();
-
+        
+        this.ClearScore();
+    }
+    GamePause()
+    {
+        this.EnabledGame(false);
+    }
+    GameResume()
+    {
+        this.EnabledGame(true);
+    }
+    GameReStart()
+    {
+        //---------------------------初始化值--------------------------------//
+        //当前局出现过的最大等级值
+        this.GameOver();
+        this.GameStart();
     }
     GameOver()
     {
-        //删除绑定触碰事件
+        
         // this.node.off(cc.Node.EventType.TOUCH_MOVE,this.touchMove, this);
         // this.node.off(cc.Node.EventType.TOUCH_END,this.touchEnd, this);
-        this.isGameRunning = false;
+        this.EnabledGame(false);
+    }
+    EnabledGame(_b = true)
+    {
+        this.isGameRunning = _b;
+        if(_b)
+        {
+            //绑定触碰事件
+            this.node.on(cc.Node.EventType.TOUCH_START,this.touchStart, this);
+            this.node.on(cc.Node.EventType.MOUSE_DOWN,this.touchStart, this);
+            
+            this.node.on(cc.Node.EventType.TOUCH_MOVE,this.touchMove, this);
+            this.node.on(cc.Node.EventType.MOUSE_MOVE,this.touchMove, this);
+            // this.node.on(cc.Node.EventType.TOUCH_START,function(){
+            //     console.log("cc.Node.EventType.TOUCH_START");
+                
+            // }, this);
+            this.node.on(cc.Node.EventType.TOUCH_END,this.touchEnd, this);
+            this.node.on(cc.Node.EventType.TOUCH_CANCEL,this.touchCancel, this);
+        }
+        else{
+            //删除绑定触碰事件
+            this.node.off(cc.Node.EventType.TOUCH_START,this.touchStart, this);
+            this.node.off(cc.Node.EventType.MOUSE_DOWN,this.touchStart, this);
+            
+            this.node.off(cc.Node.EventType.TOUCH_MOVE,this.touchMove, this);
+            this.node.off(cc.Node.EventType.MOUSE_MOVE,this.touchMove, this);
+
+            this.node.off(cc.Node.EventType.TOUCH_END,this.touchEnd, this);
+            this.node.off(cc.Node.EventType.TOUCH_CANCEL,this.touchCancel, this);
+        }
     }
     //***********************************************自定义方法***********************************************//
     JudgeSelectObject(_p:cc.Vec2)
@@ -281,23 +343,51 @@ export default class myGame extends cc.Component {
         {
             return;
         }
+        //仍是当前块
+        if(this.CurSelectPos.length>0)
+        if(_mapos.equals(this.CurSelectPos[this.CurSelectPos.length - 1]))
+        {
+            return;
+        }
+        //判断可选中距离
+        if(this.CurSelectPos.length>0)
+        {
+            let _dif = _mapos.sub(this.CurSelectPos[this.CurSelectPos.length - 1]);
+            console.log("_mapos ------------------sub- "+_mapos.x+","+_mapos.y);
+            if(Math.abs(_dif.x)>1 || Math.abs(_dif.y)>1)
+            {
+                return;
+            }
+        }
+        //是否可点击
         if(!obj.getComponent('obj').CanToucheMe())
         {
             return;
         }
+        
+        //是否取消
         if(this.CurSelectPos.length>1)
         if(_mapos.equals(this.CurSelectPos[this.CurSelectPos.length - 2]))
         {
             this.ClearSelectPos(true);
-            this.ClearSelectPos(true);
+            this.ChangeLastSelect();
             return;
         }
+        //是否已是选中状态
+        if(3== obj.getComponent('obj').GetState())
+        {
+            return;
+        }
+        //是否种类相同
+        if(this.CurSelectPos.length>0)
         if(this.GetMapDate(_mapos) != this.GetMapDate(this.CurSelectPos[0]))
         {
             return;
         }
+        
         obj.getComponent('obj').changeState(3);
         this.CurSelectPos.push(_mapos.clone());
+        this.ChangeLastSelect();
     }
     ClearSelectPos(onlylast = false)
     {
@@ -325,24 +415,68 @@ export default class myGame extends cc.Component {
     }
     RemoveSelectPos()
     {
-        let l = this.CurSelectPos.length;
-        while(l >0)
+        let _unitScore = 5;
+        //双倍道具
+        if(this.doubleScore)
         {
-            let _p= cc.p(0,0);
-            _p.set(this.CurSelectPos.pop());
-
-            let obj = this.GetMapObjNode(_p);
+            _unitScore *= 2;
+            this.doubleScore = false;
+        }
+        let n=0;
+        let l = this.CurSelectPos.length;
+        while(this.CurSelectPos.length >0)
+        {
+            n++;
+            let _p =cc.v2(0,0);
+            console.log("RemoveSelectPos1 ------ _p "+_p.x+","+_p.y);
+            _p.set(this.CurSelectPos.shift());
+            console.log("RemoveSelectPos2 ------ _p "+_p.x+","+_p.y);
+            this.AddScore(n*_unitScore,_p.clone());
             this.DestoryObject(_p);
         }
         if(l >0)
         {
             this.JudgeAutoMove();
+            if(l<5)
+            {
+                this.playBikaAudio(1);
+            }
+            else if(l<8)
+            {
+                this.playBikaAudio(2);
+            }
+            else
+            {
+                this.playBikaAudio(3);
+            }
+            
         }
     }
-    //获取当前下落物体
-    GetCurObject():cc.Node
+    ChangeLastSelect()
     {
-        return this.curObj;
+        if(this.CurSelectPos.length ==0)
+        {
+            return;
+        }
+        this.playBikaAudio(0);
+    }
+    ClearScore()
+    {
+        this.doubleScore = false;
+        this.Score = 0;
+        this.AddScore(0);
+    }
+    //加分_p为显示分数特效位置
+    AddScore(_s:number,_p:cc.Vec2 =cc.p(-1,-1))
+    {
+        this.Score +=_s;
+        
+        if(this.Score >Global.G_topScore)
+        {
+            Global.G_topScore = this.Score;
+            this.highscoreLabel.string = this.Score.toString();
+        }
+        this.scoreLabel.string = this.Score.toString();
     }
     //自动确定最大级别
     AutoSetCurTopValue(_value:number)
@@ -395,20 +529,20 @@ export default class myGame extends cc.Component {
         this.num++;
         // 使用给定的模板在场景中生成一个新节点
         let obj = this.GetObjectByPool();
-        console.log("myGame---------obj objPrefab: "+this.objPrefab);
-        console.log("myGame---------obj value: "+obj);
-        console.log("myGame---------obj node: "+ this.objParentNode);
-        console.log("myGame---------obj num: "+ this.num);
+        // console.log("myGame---------obj objPrefab: "+this.objPrefab);
+        // console.log("myGame---------obj value: "+obj);
+        // console.log("myGame---------obj node: "+ this.objParentNode);
+        // console.log("myGame---------obj num: "+ this.num);
         
         // this.node.addChild(obj);
         // 将新增的节点添加到 Canvas 节点下面
         this.objParentNode.addChild(obj);
-        console.log("myGame---------obj num: "+ this.num);
+        // console.log("myGame---------obj num: "+ this.num);
         obj.getComponent('obj').Birth(this.node,_x);
-        console.log("myGame---------obj num: "+ this.num);
+        // console.log("myGame---------obj num: "+ this.num);
         this.curObj =  obj;
         this.IsAllObjectStabilization++;
-        console.log("myGame---------CreateObject()");
+        // console.log("myGame---------CreateObject()");
         return obj;
     }
     //销毁物体
@@ -420,9 +554,9 @@ export default class myGame extends cc.Component {
         {
             return;
         }
-        // console.log("myGame---------obj value: "+obj.getComponent('obj').myValue);
+        console.log("myGame---------obj value: "+obj.getComponent('obj').myValue);
         obj.getComponent('obj').Die();
-        this.UpdateMapDate(0,_p,null);
+        // this.UpdateMapDate(0,_p,null);
         
         console.log("myGame---------obj _p: "+_p.y);
         this.PoolRecycleObject(obj);
@@ -477,6 +611,60 @@ export default class myGame extends cc.Component {
     PicMove(dir:number)
     {
         
+    }
+    //**************************************************道具****************************************//
+    //双倍积分
+    DoubleScore()
+    {
+        this.doubleScore = true;
+    }
+    //重置物体
+    ResetObject()
+    {
+        this.curAudiobikaID =-1;
+        this.removeAllObject();
+        //当前地图中物体值信息
+        for (let y = 0; y < Global.G_objNY; y++) 
+        {
+            for (let x = 0; x < Global.G_objNX; x++) 
+            {
+                //清空地图上信息
+                this.CurMapValue[y][x] = 0;
+                this.CurMapNode[y][x] = null;
+            }
+        }
+        this.JudgeAutoMove();
+    }
+    //**************************************************游戏音效****************************************//
+    CreateBikaAudio()
+    {
+        //留5个备用，省的再建内存池
+        this.AudioBika0.push(cc.instantiate(this.Audio_bika[0]));
+        //指向第几个备用音效
+        this.pointBika0 = 0;
+    }
+    playBikaAudio(_id)
+    {
+        if(_id<0 ||_id >3)
+        {
+            return;
+        }
+        if(0 == _id && _id == this.curAudiobikaID)
+        {
+            this.AudioBika0[this.pointBika0++].play();
+            if(this.pointBika0 >= this.AudioBika0.length)
+            {
+                this.pointBika0 = 0;
+            }
+        }
+        else 
+        {
+            this.Audio_bika[_id].play();
+        }
+        
+        this.curAudiobikaID = _id;
+        
+        // cc.audioEngine.play( this.Audio_button, false, 1);
     }
     //**********************************************************************************************//
     
