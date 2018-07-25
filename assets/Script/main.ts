@@ -48,7 +48,6 @@ export default class main extends cc.Component {
             if(isBackGround){
                 cc.log("切换前台",event);    
                 isBackGround = false;
-                this.InitMusicState();
             }
         });
     }
@@ -71,6 +70,9 @@ export default class main extends cc.Component {
                     
                 }
             });
+            wx.onShow((res) => {
+                this.InitMusicState();
+                        });
         }
         this.musicID= 0;
         
@@ -84,7 +86,7 @@ export default class main extends cc.Component {
     }
     onEnable()
     {
-        this.InitMusicState();
+        
         // console.log("myGame---------onEnable");
     }
     changeScene(_id:Scene, _force:boolean = false)
