@@ -94,6 +94,11 @@ export default class myGame extends cc.Component {
     onEnable()
     {
         console.log("myGame---------onEnable");
+        if(!this.isGameRunning)
+        {
+            this.GameResume();
+        }
+        // this.EnabledGame();
     }
     update(dt:number)
     {
@@ -125,6 +130,7 @@ export default class myGame extends cc.Component {
     //*************************************************触碰事件*********************************************//
     touchStart (event)
     {
+        console.log(" touchstart (event)");
         //转换为本节点位置
         let loc = this.node.convertToNodeSpace(event.getLocation());
         if(loc.x<0 || loc.y<0)
@@ -436,6 +442,16 @@ export default class myGame extends cc.Component {
         }
         if(l >0)
         {
+            console.log("Global.G_topScore is "+Global.G_topScore);
+            if(this.Score >Global.G_topScore)
+            {
+                console.log("top score is "+this.Score);;
+                
+                Global.G_topScore = this.Score;
+                Global.G_myTool.setMyScore(Global.G_topScore);
+                this.highscoreLabel.string = this.Score.toString();
+                Global.G_myTool.submitScoreButtonFunc(Global.G_topScore);
+            }
             this.JudgeAutoMove();
             if(l<5)
             {
@@ -470,12 +486,6 @@ export default class myGame extends cc.Component {
     AddScore(_s:number,_p:cc.Vec2 =cc.p(-1,-1))
     {
         this.Score +=_s;
-        
-        if(this.Score >Global.G_topScore)
-        {
-            Global.G_topScore = this.Score;
-            this.highscoreLabel.string = this.Score.toString();
-        }
         this.scoreLabel.string = this.Score.toString();
     }
     //自动确定最大级别

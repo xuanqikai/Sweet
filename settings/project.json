@@ -16,7 +16,14 @@
   "excluded-modules": [
     "ParticleSystem",
     "TiledMap",
+    "ProgressBar",
+    "ScrollBar",
+    "ScrollView",
+    "PageView",
+    "PageViewIndicator",
+    "EditorBox",
     "WebView",
+    "Graphics",
     "DragonBones",
     "Physics",
     "StudioComponent",
@@ -35,6 +42,5 @@
     "width": 960
   },
   "use-customize-simulator": false,
-  "use-project-simulator-setting": false,
-  "start-scene": "current"
+  "use-project-simulator-setting": false
 }
