@@ -31,6 +31,37 @@ export default class tool extends cc.Component {
         }
         return this.instance;
     }
+    DrawLineWithPic(_spr:cc.Sprite, _origin:cc.Vec2,_tar:cc.Vec2):boolean
+    {
+        console.log("DrawLineWithPic 0");
+        
+        if(!_spr)
+        {
+            return false;
+        }
+        console.log("DrawLineWithPic 1");
+        let angle = 0;
+        let lx = _tar.x - _origin.x;
+        let ly = _tar.y - _origin.y;
+        let length = Math.sqrt(lx*lx+ly*ly);
+        console.log("DrawLineWithPic length："+length);
+        if(length<10)
+        {
+            return false;
+        }
+        let _h= _spr.node.getContentSize().height;
+        _spr.node.setPosition(_origin);
+        //设置锚点
+        _spr.node.setAnchorPoint(0,0.5);
+        //缩放
+        _spr.node.width = length;//(length/_h);
+
+        
+        angle = -Math.atan2(ly,lx)/Math.PI *180;
+        _spr.node.rotation = angle;
+        console.log("DrawLineWithPic angle："+angle);
+        return true;
+    }
     //改变图片
     ChangeSprite(kind:number)
     {

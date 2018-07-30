@@ -13,6 +13,12 @@ export default class myGame extends cc.Component {
     @property(cc.Label)
     highscoreLabel: cc.Label = null;
 
+    @property(cc.Label)
+    addScoreNumber: cc.Label = null;
+
+    @property(cc.Sprite)
+    lineSprite: cc.Sprite = null;
+
     //游戏音效
     @property([cc.AudioSource])
     Audio_bika:Array<cc.AudioSource> = [];
@@ -25,6 +31,8 @@ export default class myGame extends cc.Component {
     private CurMapValue:Array<Array<any>> = new Array<Array<any>>();
     private CurMapNode:Array<Array<cc.Node>>  = new Array<Array<cc.Node>>();
     private CurSelectPos:Array<cc.Vec2>  = new Array<cc.Vec2>();
+    //画线
+    private SelectLine:Array<cc.Node>  = new Array<cc.Node>();
     // private CurMapValue1:[Number];
     // private CurMapValue:number[][];
     // private CurMapNode:cc.Node[][];
@@ -38,6 +46,8 @@ export default class myGame extends cc.Component {
     //对象池
     private objPoolSize = 0; 
     private ObjPool:cc.NodePool = null;
+    //画线对象池
+    private LinePool:cc.NodePool = null;
     private touchPos = cc.v2(-1,-1);
     private num = 0;
     private Score = 0;
@@ -47,6 +57,7 @@ export default class myGame extends cc.Component {
     private AudioBika0:Array<cc.AudioSource> = new Array<cc.AudioSource>();
     private pointBika0 = 0;
 
+    private lineColor = cc.color(255,255,255);
 
     //***********************************************初始化脚本***********************************************//
     onLoad()
@@ -78,6 +89,7 @@ export default class myGame extends cc.Component {
         this.node.setPosition((Global.width-Global.G_objNX*Global.G_objSizeW)/2,(Global.height-Global.G_objNY*Global.G_objSizeH)/2);
         this.node.setContentSize(Global.G_objNX*Global.G_objSizeW,Global.G_objNY*Global.G_objSizeH);
         this.InitObjectPool();
+        this.InitLinePool();
         this.isGameRunning = false;
         this.Score = 0;
         this.doubleScore = false;
@@ -120,6 +132,7 @@ export default class myGame extends cc.Component {
     {
         console.log("myGame---------onDestroy()");
         this.DestroyObjectPool();
+        this.DestroyLinePool();
         if(this.objParentNode && cc.isValid(this.objParentNode))
         {
             this.objParentNode.destroy();
@@ -154,6 +167,19 @@ export default class myGame extends cc.Component {
         {
             return;
         }
+        //画线
+        if(this.CurSelectPos.length>0)
+        {
+            let  _lastpos = cc.v2(0.5,0.5).add(this.CurSelectPos[this.CurSelectPos.length-1]);
+            if(Global.G_myTool.DrawLineWithPic(this.lineSprite,cc.v2(_lastpos.x*Global.G_objSizeW,_lastpos.y*Global.G_objSizeH),loc.clone()))
+            {
+                this.lineSprite.node.active = true;
+            }
+            else{
+                this.lineSprite.node.active = false;
+            }
+        }
+
         this.JudgeSelectObject(loc);
         // // console.log(" touchMove (event) 000  ");
         // const _l = 20; //滑动距离超过20才判定为滑动
@@ -262,6 +288,45 @@ export default class myGame extends cc.Component {
         this.ObjPool.clear();
         this.ObjPool = null;
         this.objPoolSize = 0;
+    }
+    InitLinePool()
+    {
+        //初始化五个对形象代用
+        let lineSize = 5;
+        this.LinePool = new cc.NodePool();
+        for (let i = 0; i < lineSize; ++i) 
+        {
+            let line = cc.instantiate(this.lineSprite.node); // 创建节点
+            this.LinePool.put(line); // 通过 putInPool 接口放入对象池
+        }
+        console.log("-------------------InitObjectPool()-------------------");
+        
+    }
+    GeLineByPool():cc.Node
+    {
+        let  _obj = null;
+       
+        if (this.LinePool.size() > 0) 
+        { // 通过 size 接口判断对象池中是否有空闲的对象
+            // console.log("this.ObjPool.size() ppppis --- "+this.ObjPool.size());
+             
+            _obj = this.LinePool.get();
+            // console.log("this.ObjPool.size() is --- "+this.ObjPool.size());
+        } 
+        else 
+        { // 如果没有空闲对象，也就是对象池中备用对象不够时，我们就用 cc.instantiate 重新创建
+            _obj = cc.instantiate(this.lineSprite.node);
+        }
+        return _obj;
+    }
+    PoolRecycleLine(obj:cc.Node)
+    {
+        this.LinePool.put(obj); // 通过 putInPool 接口放入对象池
+    }
+    DestroyLinePool()
+    {
+        this.LinePool.clear();
+        this.LinePool = null;
     }
     //**************************************************游戏声明周期********************************************//
     GameStart()
@@ -390,6 +455,29 @@ export default class myGame extends cc.Component {
         {
             return;
         }
+        //获取线的颜色
+        if(this.CurSelectPos.length == 0)
+        {
+            let _color =[cc.color(141,171,0),cc.color(13,191,230),cc.color(254,133,202),
+                cc.color(249,132,74),cc.color(245,212,79)];
+            this.lineColor = _color[this.GetMapDate(_mapos)-1];
+            this.lineSprite.node.color = this.lineColor;
+        }
+        //连线
+        else if(this.CurSelectPos.length > 0)
+        {
+            let _line = this.GeLineByPool();
+            this.SelectLine.push(_line);
+            this.objParentNode.addChild(_line,1);
+            _line.active = true;
+            let _sprite:cc.Sprite = _line.getComponent("cc.Sprite");
+            let  _lastpos = cc.v2(0.5,0.5).add(this.CurSelectPos[this.CurSelectPos.length-1]);
+            let  _curpos = cc.v2(0.5,0.5).add(_mapos);
+
+            Global.G_myTool.DrawLineWithPic(_sprite,cc.v2(_lastpos.x*Global.G_objSizeW,_lastpos.y*Global.G_objSizeH),cc.v2(_curpos.x*Global.G_objSizeW,_curpos.y*Global.G_objSizeH));
+            console.log("_sprite : "+_sprite.spriteFrame.name);
+            _line.color = this.lineColor;
+        }
         
         obj.getComponent('obj').changeState(3);
         this.CurSelectPos.push(_mapos.clone());
@@ -418,6 +506,21 @@ export default class myGame extends cc.Component {
                 break;
             }
         }
+        while(this.SelectLine.length >0)
+        {
+            this.PoolRecycleLine(this.SelectLine.pop());
+            if(onlylast)
+            {
+                break;
+            }
+        }
+        if(!onlylast)
+        {
+            //去掉划线
+            this.lineSprite.node.active = false;
+            
+        }
+        
     }
     RemoveSelectPos()
     {
@@ -465,7 +568,12 @@ export default class myGame extends cc.Component {
             {
                 this.playBikaAudio(3);
             }
-            
+            while(this.SelectLine.length >0)
+            {
+                this.PoolRecycleLine(this.SelectLine.pop());
+            }
+            //去掉划线
+            this.lineSprite.node.active = false;
         }
     }
     ChangeLastSelect()
@@ -546,7 +654,7 @@ export default class myGame extends cc.Component {
         
         // this.node.addChild(obj);
         // 将新增的节点添加到 Canvas 节点下面
-        this.objParentNode.addChild(obj);
+        this.objParentNode.addChild(obj,2);
         // console.log("myGame---------obj num: "+ this.num);
         obj.getComponent('obj').Birth(this.node,_x);
         // console.log("myGame---------obj num: "+ this.num);

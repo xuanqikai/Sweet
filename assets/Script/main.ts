@@ -28,10 +28,10 @@ export default class main extends cc.Component {
     musicBack: Array<cc.Sprite> = [];
     //背景音乐
     @property(cc.AudioSource)
-    backAudioSource: cc.AudioSource;
+    backAudioSource: cc.AudioSource = null;
     //按钮音效
     @property(cc.AudioSource)
-    Audio_button: cc.AudioSource;
+    Audio_button: cc.AudioSource = null;
 
     @property(cc.Sprite)
     rankingScrollView: cc.Sprite = null;//显示排行榜
@@ -210,14 +210,14 @@ export default class main extends cc.Component {
         console.log("share  00000");
         Global.G_myTool.setMyScore(0);
         console.log("share  11111");
-        // if(this.openWX && wx)
-        // {
-        //     wx.shareAppMessage({
-        //         title: "@你，大家快点来玩Sweet",
-        //         imageUrl: "res/raw-assets/Texture/back.png",//"http://pic.qiantucdn.com/58pic/22/06/55/57b2d98e109c6_1024.jpg!/fw/1024/watermark/url/L2ltYWdlcy93YXRlcm1hcmsvZGF0dS5wbmc=/repeat/true/crop/0x1024a0a0",
-        //         query: "123456"
-        //       });
-        // }
+        if(this.openWX && wx)
+        {
+            wx.shareAppMessage({
+                title: "@你，大家快点来玩Sweet",
+                imageUrl: "res/raw-assets/Texture/back.png",//"http://pic.qiantucdn.com/58pic/22/06/55/57b2d98e109c6_1024.jpg!/fw/1024/watermark/url/L2ltYWdlcy93YXRlcm1hcmsvZGF0dS5wbmc=/repeat/true/crop/0x1024a0a0",
+                query: "123456"
+              });
+        }
         
     }
     shareCallBack(object:Object )

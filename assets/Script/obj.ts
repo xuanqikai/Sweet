@@ -14,9 +14,18 @@ export default class obj extends cc.Component {
     @property(cc.Sprite)
     mySprite: cc.Sprite = null;
 
+    @property(cc.Sprite)
+    spriteBack: cc.Sprite = null;
+
+    @property([cc.Sprite])
+    spriteEffect: Array<cc.Sprite> = [];
+
+
     @property([cc.SpriteFrame])
     spriteFrame: Array<cc.SpriteFrame> = [];
 
+
+    
     //左下角位置（即最小位置坐标）
     MinPos = cc.p(0,0);
 
@@ -31,6 +40,9 @@ export default class obj extends cc.Component {
     gameScene:cc.Node = null;
     //偏移量
     offset = cc.p(Global.G_objSizeW/2,Global.G_objSizeH/2);
+    //
+    effectIndex = 0;
+    
 
 
 
@@ -47,6 +59,7 @@ export default class obj extends cc.Component {
         // console.log("_ppp000 **** ("+_ppp.x+","+_ppp.y+")");
         // this.test(_ppp.clone());
         // console.log("_ppp111 **** ("+_ppp.x+","+_ppp.y+")");
+        this.spriteBack.node.opacity = 150;
     }
     // test(_p:number)
     // {
@@ -98,7 +111,6 @@ export default class obj extends cc.Component {
             ()=>{
                 this.changeState(2);
             }
-             
          })));
          this.changeState(2);          
     }
@@ -122,14 +134,18 @@ export default class obj extends cc.Component {
         {
             //把当前节点加入地图信息
             this.GetParentScript().UpdateMapDate(this.myKind,this.pos,this.node);
-            this.node.setScale(1.0);
+            this.spriteBack.node.setScale(1.0);
+            // this.spriteBack.isValid = false;
+            // this.spriteBack.node.isValid = false;
             
         }
         else if(3 == _state)
         {
             //把当前节点加入地图信息
-            this.node.setScale(1.2);
+            this.spriteBack.node.setScale(1.2);
             
+            // this.spriteBack.isValid = true;
+            this.ShowSaleAnimal();
         }
         else if(4 == _state || 1 == _state || 0 == _state)
         {
@@ -161,6 +177,7 @@ export default class obj extends cc.Component {
         console.log("picObject---------getgameScene");
         //状态
         this.myState = 0;
+        this.effectIndex = 0;
         //所在格子位置
         this.pos = cc.p(_x,Global.G_objNY);
         /*
@@ -236,6 +253,11 @@ export default class obj extends cc.Component {
         }
         // let str = 'obj'+_v +'.png';
         this.mySprite.spriteFrame = this.spriteFrame[_v-1];
+        this.spriteBack.spriteFrame = this.spriteFrame[_v-1];
+        for (let index = 0; index < 5; index++) 
+        {
+            this.spriteEffect[index].spriteFrame = this.spriteFrame[_v-1];
+        }
     }
     //获取父节点的脚本信息
     GetParentScript(): any
@@ -261,6 +283,23 @@ export default class obj extends cc.Component {
             console.log("EstimateIsEmpty false ---- _p is -- "+_p.x+","+_p.y);
         }
         return b;
+    }
+    //**********************************动画信息***********************************//
+    //判断是否是空位
+    ShowSaleAnimal()
+    {
+        let _effct = this.spriteEffect[this.effectIndex];
+        _effct.node.setScale(1);
+        _effct.node.opacity = 100;
+        let faO = cc.fadeOut(0.8);//1秒淡出
+        let scTo = cc.scaleTo(0.8,2.0);//将节点缩放到2倍
+        let ss = cc.spawn(faO,scTo);
+        _effct.node.runAction(ss);
+        this.effectIndex++;
+        if(this.effectIndex >4)
+        {
+            this.effectIndex = 0;
+        }
     }
     //****************************************************************************//
 }
