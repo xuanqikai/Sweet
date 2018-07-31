@@ -62,7 +62,7 @@ export default class main extends cc.Component {
         // this.label.string = this.text;
         // wx.showShareMenu();
         Global.G_topScore = 0;
-        let _n = Global.G_myTool.getMyScore();
+        let _n = Global.Tool.getMyScore();
         // let _n = cc.sys.localStorage.getItem('topScore');
         if(_n && _n>0)
         {
@@ -208,7 +208,7 @@ export default class main extends cc.Component {
     share()
     {
         console.log("share  00000");
-        Global.G_myTool.setMyScore(0);
+        Global.Tool.setMyScore(0);
         console.log("share  11111");
         if(this.openWX && wx)
         {
@@ -257,7 +257,7 @@ export default class main extends cc.Component {
     }
     getRank()
     {
-        Global.G_myTool.friendButtonFunc();
+        Global.Tool.friendButtonFunc();
     }
 
     // 刷新子域的纹理

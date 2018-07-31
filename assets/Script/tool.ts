@@ -19,6 +19,9 @@ export default class tool extends cc.Component {
      * @return
      *
      */
+    ObjectPoolMap:{[key:string] : cc.NodePool} = {};
+    PoolPreMap:{[key:string] : any} = {};
+
     private bannerAd = null;
 
     private rewardedAd = null;
@@ -62,6 +65,71 @@ export default class tool extends cc.Component {
         console.log("DrawLineWithPic angle："+angle);
         return true;
     }
+    //********************************************存储****************************************************/
+    getMyScore():number
+    {
+        cc.log("getMyScore():----------------------------------------- ");
+        let _n = cc.sys.localStorage.getItem('topScore');
+        cc.log("getMyScore():----------------------------------------- " + _n);
+        if(null == _n)
+        {
+            return 0;
+        }
+        return _n;
+    }
+    setMyScore(_n:number)
+    {
+        cc.log("setMyScore(_n:number)------------------------------- "+ _n );
+        cc.sys.localStorage.setItem('topScore', _n);
+    }
+    //********************************************自动回收池****************************************************/
+    //_name创建的对象池名，_pre预制体或Node节点对象,initSize初始大小(与DestroyObjPool要对应调用)
+    CreateObjPool(_name:string,_pre:any,initSize = 0)
+    {
+        let objPool = new cc.NodePool();
+        for (let i = 0; i < initSize; ++i) 
+        {
+            let obj = cc.instantiate(_pre); // 创建节点
+            objPool.put(obj); // 通过 putInPool 接口放入对象池
+        }
+        this.ObjectPoolMap[_name] = objPool;
+        this.PoolPreMap[_name] = _pre;
+        console.log("-------------------InitObjectPool()-------------------");
+        
+    }
+    GetObjPool(_name:string):cc.Node
+    {
+        let  _objPoll = this.ObjectPoolMap[_name];
+        if(!_objPoll)
+        {
+            console.log("Error: The _objPoll "+_name +" is NULL!");          
+            return null;
+        }
+        let  _obj = null;
+        if (_objPoll.size() > 0) 
+        { // 通过 size 接口判断对象池中是否有空闲的对象
+            // console.log("this.ObjPool.size() ppppis --- "+this.ObjPool.size());
+             
+            _obj = _objPoll.get();
+            // console.log("this.ObjPool.size() is --- "+this.ObjPool.size());
+        } 
+        else 
+        { // 如果没有空闲对象，也就是对象池中备用对象不够时，我们就用 cc.instantiate 重新创建
+            _obj = cc.instantiate(this.PoolPreMap[_name]);
+        }
+        return _obj;
+    }
+    PoolRecycleObj(_name:string,obj:cc.Node)
+    {
+        this.ObjectPoolMap[_name].put(obj); // 通过 putInPool 接口放入对象池
+    }
+    DestroyObjPool(_name:string)
+    {
+        this.ObjectPoolMap[_name].clear();
+        delete this.ObjectPoolMap[_name];
+        delete this.PoolPreMap[_name];
+    }
+    //********************************************************************************************************/
     //改变图片
     ChangeSprite(kind:number)
     {
@@ -126,22 +194,7 @@ export default class tool extends cc.Component {
         }
         cc.log("提交得分: x1 :----------------------------------------- " + _score);
     }
-    getMyScore():number
-    {
-        cc.log("getMyScore():----------------------------------------- ");
-        let _n = cc.sys.localStorage.getItem('topScore');
-        cc.log("getMyScore():----------------------------------------- " + _n);
-        if(null == _n)
-        {
-            return 0;
-        }
-        return _n;
-    }
-    setMyScore(_n:number)
-    {
-        cc.log("setMyScore(_n:number)------------------------------- "+ _n );
-        cc.sys.localStorage.setItem('topScore', _n);
-    }
+    
     CreateBanner()
     {
         if (CC_WECHATGAME) 

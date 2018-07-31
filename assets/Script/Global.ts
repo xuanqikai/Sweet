@@ -9,7 +9,7 @@ export enum Scene
 
 export class Global 
 {
-    static G_myTool:tool = tool.getInstance();
+    static Tool:tool = tool.getInstance();
     //屏幕大小
     static width = 720;
     static height = 1280;

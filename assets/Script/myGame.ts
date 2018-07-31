@@ -10,6 +10,10 @@ export default class myGame extends cc.Component {
     objPrefab: cc.Prefab = null;
     @property(cc.Label)
     scoreLabel: cc.Label = null;
+
+    @property(cc.Label)
+    timeLabel: cc.Label = null;
+
     @property(cc.Label)
     highscoreLabel: cc.Label = null;
 
@@ -57,6 +61,12 @@ export default class myGame extends cc.Component {
     private AudioBika0:Array<cc.AudioSource> = new Array<cc.AudioSource>();
     private pointBika0 = 0;
 
+    //时间倒计时
+    private remaindTime = 0;
+
+    //游戏是否开始
+    private IsGameStarted = false;
+
     private lineColor = cc.color(255,255,255);
 
     //***********************************************初始化脚本***********************************************//
@@ -81,7 +91,6 @@ export default class myGame extends cc.Component {
         {
             this.objParentNode =new cc.Node();
             console.log("create objParentNode");
-            
         }
         this.node.addChild(this.objParentNode);
         //游戏内物体块父类
@@ -90,6 +99,7 @@ export default class myGame extends cc.Component {
         this.node.setContentSize(Global.G_objNX*Global.G_objSizeW,Global.G_objNY*Global.G_objSizeH);
         this.InitObjectPool();
         this.InitLinePool();
+        Global.Tool.CreateObjPool("Number",this.addScoreNumber.node,5);
         this.isGameRunning = false;
         this.Score = 0;
         this.doubleScore = false;
@@ -133,6 +143,7 @@ export default class myGame extends cc.Component {
         console.log("myGame---------onDestroy()");
         this.DestroyObjectPool();
         this.DestroyLinePool();
+        Global.Tool.DestroyObjPool("Number");
         if(this.objParentNode && cc.isValid(this.objParentNode))
         {
             this.objParentNode.destroy();
@@ -171,7 +182,7 @@ export default class myGame extends cc.Component {
         if(this.CurSelectPos.length>0)
         {
             let  _lastpos = cc.v2(0.5,0.5).add(this.CurSelectPos[this.CurSelectPos.length-1]);
-            if(Global.G_myTool.DrawLineWithPic(this.lineSprite,cc.v2(_lastpos.x*Global.G_objSizeW,_lastpos.y*Global.G_objSizeH),loc.clone()))
+            if(Global.Tool.DrawLineWithPic(this.lineSprite,cc.v2(_lastpos.x*Global.G_objSizeW,_lastpos.y*Global.G_objSizeH),loc.clone()))
             {
                 this.lineSprite.node.active = true;
             }
@@ -235,9 +246,20 @@ export default class myGame extends cc.Component {
     }
     touchCancel(event)
     {
-        this.ClearSelectPos();
-        this.touchPos.x =-1;
-        this.touchPos.y =-1;
+        this.touchEnd (event)
+        // this.ClearSelectPos();
+        // this.touchPos.x =-1;
+        // this.touchPos.y =-1;
+    }
+    //*****************************************************定时器***********************************************//
+    timeUpdate(_dt)
+    {
+        if(this.remaindTime ==0)
+        {
+            this.GameOver();
+        }
+        this.timeLabel.string = this.remaindTime.toString();
+        this.remaindTime--;
     }
     //*****************************************************对象池***********************************************//
     InitObjectPool()
@@ -335,10 +357,14 @@ export default class myGame extends cc.Component {
         //当前局出现过的最大等级值
         this.CurTopValue = 1;
 
+        this.IsGameStarted = true;
+        this.remaindTime = 100;
         this.ResetObject();
         // this.CurMapValue[0][1] = 2;
         // this.CreateObject();
         this.istouchedMove =0;
+        this.timeUpdate(0);
+        this.schedule(this.timeUpdate,1);
         this.EnabledGame();
         
         // this.node.on(cc.Node.EventType.TOUCH_MOVE,function(){
@@ -350,10 +376,18 @@ export default class myGame extends cc.Component {
     }
     GamePause()
     {
+        if(!this.IsGameStarted)
+        {
+            return;
+        }
         this.EnabledGame(false);
     }
     GameResume()
     {
+        if(!this.IsGameStarted)
+        {
+            return;
+        }
         this.EnabledGame(true);
     }
     GameReStart()
@@ -369,6 +403,8 @@ export default class myGame extends cc.Component {
         // this.node.off(cc.Node.EventType.TOUCH_MOVE,this.touchMove, this);
         // this.node.off(cc.Node.EventType.TOUCH_END,this.touchEnd, this);
         this.EnabledGame(false);
+        this.unschedule(this.timeUpdate);
+        this.IsGameStarted = false;
     }
     EnabledGame(_b = true)
     {
@@ -387,6 +423,11 @@ export default class myGame extends cc.Component {
             // }, this);
             this.node.on(cc.Node.EventType.TOUCH_END,this.touchEnd, this);
             this.node.on(cc.Node.EventType.TOUCH_CANCEL,this.touchCancel, this);
+            this.node.resumeAllActions();
+            cc.director.getScheduler().resumeTarget(this);
+            console.log("EnabledGame true");
+            
+            
         }
         else{
             //删除绑定触碰事件
@@ -398,6 +439,13 @@ export default class myGame extends cc.Component {
 
             this.node.off(cc.Node.EventType.TOUCH_END,this.touchEnd, this);
             this.node.off(cc.Node.EventType.TOUCH_CANCEL,this.touchCancel, this);
+            this.node.pauseAllActions();
+            cc.director.getScheduler().pauseTarget(this);
+            console.log("EnabledGame false");
+            
+            this.ClearSelectPos();
+            this.touchPos.x =-1;
+            this.touchPos.y =-1;
         }
     }
     //***********************************************自定义方法***********************************************//
@@ -474,7 +522,7 @@ export default class myGame extends cc.Component {
             let  _lastpos = cc.v2(0.5,0.5).add(this.CurSelectPos[this.CurSelectPos.length-1]);
             let  _curpos = cc.v2(0.5,0.5).add(_mapos);
 
-            Global.G_myTool.DrawLineWithPic(_sprite,cc.v2(_lastpos.x*Global.G_objSizeW,_lastpos.y*Global.G_objSizeH),cc.v2(_curpos.x*Global.G_objSizeW,_curpos.y*Global.G_objSizeH));
+            Global.Tool.DrawLineWithPic(_sprite,cc.v2(_lastpos.x*Global.G_objSizeW,_lastpos.y*Global.G_objSizeH),cc.v2(_curpos.x*Global.G_objSizeW,_curpos.y*Global.G_objSizeH));
             console.log("_sprite : "+_sprite.spriteFrame.name);
             _line.color = this.lineColor;
         }
@@ -533,6 +581,7 @@ export default class myGame extends cc.Component {
         }
         let n=0;
         let l = this.CurSelectPos.length;
+        let hatArray: Array<cc.Vec2> = new Array<cc.Vec2>();
         while(this.CurSelectPos.length >0)
         {
             n++;
@@ -542,20 +591,24 @@ export default class myGame extends cc.Component {
             console.log("RemoveSelectPos2 ------ _p "+_p.x+","+_p.y);
             this.AddScore(n*_unitScore,_p.clone());
             this.DestoryObject(_p);
+            if(l>5 && l-this.CurSelectPos.length >5)
+            {
+                hatArray.push(_p.clone());
+            }
         }
         if(l >0)
         {
             console.log("Global.G_topScore is "+Global.G_topScore);
             if(this.Score >Global.G_topScore)
             {
-                console.log("top score is "+this.Score);;
+                console.log("top score is "+this.Score);
                 
                 Global.G_topScore = this.Score;
-                Global.G_myTool.setMyScore(Global.G_topScore);
+                Global.Tool.setMyScore(Global.G_topScore);
                 this.highscoreLabel.string = this.Score.toString();
-                Global.G_myTool.submitScoreButtonFunc(Global.G_topScore);
+                Global.Tool.submitScoreButtonFunc(Global.G_topScore);
             }
-            this.JudgeAutoMove();
+            this.JudgeAutoMove(-1，hatArray);
             if(l<5)
             {
                 this.playBikaAudio(1);
@@ -595,6 +648,32 @@ export default class myGame extends cc.Component {
     {
         this.Score +=_s;
         this.scoreLabel.string = this.Score.toString();
+        if(_s<=0)
+        {
+            return;
+        }
+        //显示加分数字
+        let _numberNode = Global.Tool.GetObjPool("Number"); 
+        this.objParentNode.addChild(_numberNode,5);
+        _numberNode.active = true;
+        let _lable:cc.Label = _numberNode.getComponent("cc.Label");
+        _lable.string = _s.toString();
+        let  _pos = cc.v2(0.5,0.8).add(_p);
+        _numberNode.setPosition(Global.G_objSizeW * _pos.x,Global.G_objSizeH*_pos.y);
+        //动画效果
+        var action = cc.moveBy(0.5,cc.v2(0,20));
+        var action2 = cc.fadeOut(0.1);
+        _numberNode.opacity = 255;
+        _numberNode.color = this.lineColor;
+        //移动前停止所有动作
+        _numberNode.stopAllActions();
+        //移动完成过后,更改状态
+        _numberNode.runAction(cc.sequence(action,action2, cc.callFunc(function(){
+            ()=>{
+                Global.Tool.PoolRecycleObj("Number",_numberNode);
+            }
+         })));
+
     }
     //自动确定最大级别
     AutoSetCurTopValue(_value:number)
@@ -692,8 +771,8 @@ export default class myGame extends cc.Component {
         }
         this.objParentNode.removeAllChildren();
     }
-    //判断自动移动_x:指定行
-    JudgeAutoMove(_x:number = -1)
+    //判断自动移动_x:指定行,_hatArray有皇冠的位置
+    JudgeAutoMove(_x:number = -1,_hatArray:Array<cc.Vec2>=[])
     {
         let _start =0;
         let _end =Global.G_objNX;
@@ -723,6 +802,17 @@ export default class myGame extends cc.Component {
                 let obj = this.CreateObject(x);
                 obj.getComponent('obj').Move(moveH-y,y);
             }
+        }
+        //更新皇冠信息
+        if(_hatArray.length>0)
+        {
+            _hatArray.forEach(element => {
+                let obj = this.GetMapObjNode(element);
+                if(obj)
+                {
+                    obj.getComponent('obj').SetHatState(true);
+                }
+            });
         }
     }
     //移动方向

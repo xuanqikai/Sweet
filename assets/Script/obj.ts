@@ -17,6 +17,9 @@ export default class obj extends cc.Component {
     @property(cc.Sprite)
     spriteBack: cc.Sprite = null;
 
+    @property(cc.Sprite)
+    hat: cc.Sprite = null;
+
     @property([cc.Sprite])
     spriteEffect: Array<cc.Sprite> = [];
 
@@ -34,7 +37,7 @@ export default class obj extends cc.Component {
     //所在格子位置
     pos = cc.p(-1,-1);
     //下落速度（每格时间）
-    moveSpeed = 0.05;
+    moveSpeed = 0.08;
     //自身代表的级别值(即2048中2的n次方)
     myKind = 1; 
     gameScene:cc.Node = null;
@@ -43,6 +46,8 @@ export default class obj extends cc.Component {
     //
     effectIndex = 0;
     
+    //是否有帽子
+    private haveHat = false;
 
 
 
@@ -109,9 +114,10 @@ export default class obj extends cc.Component {
         //移动完成过后,更改状态
         this.node.runAction(cc.sequence(dt,action, cc.callFunc(function(){
             ()=>{
-                this.changeState(2);
+                // this.changeState(2);
             }
          })));
+         //立刻更改状态，更新地图信息以便mygame获取
          this.changeState(2);          
     }
     //更改状态(coerce 是否强制更新状态)
@@ -160,6 +166,15 @@ export default class obj extends cc.Component {
     GetState():number
     {
         return this.myState;
+    }
+    SetHatState(_b:boolean)
+    {
+        this.haveHat = _b;
+        this.hat.node.active = _b;
+    }
+    GetHatState():boolean
+    {
+        return this.haveHat;
     }
     CanToucheMe():boolean
     {
@@ -222,13 +237,18 @@ export default class obj extends cc.Component {
         let curPos = cc.p(this.pos.x*Global.G_objSizeW,Global.height).add(this.offset);
         // let _curPos = this.MinPos.add(_p.mul(Global.g));
         this.node.setPosition(curPos);
+        this.SetHatState(false);
+
         console.log("picObject---------Birth() _value:"+_value);
     }
     //节点消失
     Die()
     {
         this.unschedule(this.upddate);
+        this.node.stopAllActions();
+        this.StopSaleAnimal();
         this.changeState(0);
+        this.hat.node.active = false;
     }
     //设置自身级别值
     SetMyKind(_v:number)
@@ -285,10 +305,11 @@ export default class obj extends cc.Component {
         return b;
     }
     //**********************************动画信息***********************************//
-    //判断是否是空位
+    //显示缩放动画
     ShowSaleAnimal()
     {
         let _effct = this.spriteEffect[this.effectIndex];
+        _effct.node.active = true;
         _effct.node.setScale(1);
         _effct.node.opacity = 100;
         let faO = cc.fadeOut(0.8);//1秒淡出
@@ -300,6 +321,17 @@ export default class obj extends cc.Component {
         {
             this.effectIndex = 0;
         }
+    }
+    //停止缩放动画
+    StopSaleAnimal()
+    {
+        this.spriteEffect.forEach(element => {
+            if(element.node.active)
+            {
+                element.node.stopAllActions();
+                element.node.active = false;
+            }
+        });
     }
     //****************************************************************************//
 }
