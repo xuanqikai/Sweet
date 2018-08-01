@@ -225,6 +225,13 @@ export default class main extends cc.Component {
         console.log("object  "+object.toString());
         
     }
+    //-------------------------------------广告----------------------------------//
+    //视频复活
+    ReviveByAD()
+    {
+        console.log("reviveBuAD");
+        
+    }
     //-------------------------------------微信----------------------------------//
     wxInit()
     {

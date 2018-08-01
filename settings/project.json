@@ -32,16 +32,15 @@
     "Intersection"
   ],
   "fit-height": true,
-  "fit-width": false,
+  "fit-width": true,
   "group-list": [
     "default"
   ],
   "simulator-orientation": false,
   "simulator-resolution": {
-    "height": 640,
-    "width": 960
+    "height": 1080,
+    "width": 2280
   },
-  "use-customize-simulator": false,
-  "use-project-simulator-setting": false,
-  "start-scene": "current"
+  "use-customize-simulator": true,
+  "use-project-simulator-setting": true
 }

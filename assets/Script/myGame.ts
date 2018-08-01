@@ -23,9 +23,16 @@ export default class myGame extends cc.Component {
     @property(cc.Sprite)
     lineSprite: cc.Sprite = null;
 
+    @property(cc.Layout)
+    gameOverlayer: cc.Layout = null;
+
+    @property(cc.Label)
+    gameOverScore: cc.Label = null;
+
     //游戏音效
     @property([cc.AudioSource])
     Audio_bika:Array<cc.AudioSource> = [];
+
 
     //是否所有物体进入稳定状态
     IsAllObjectStabilization = 0;
@@ -95,7 +102,7 @@ export default class myGame extends cc.Component {
         this.node.addChild(this.objParentNode);
         //游戏内物体块父类
         this.node.setAnchorPoint(cc.p(0,0));
-        this.node.setPosition((Global.width-Global.G_objNX*Global.G_objSizeW)/2,(Global.height-Global.G_objNY*Global.G_objSizeH)/2);
+        this.node.setPosition((Global.width-Global.G_objNX*Global.G_objSizeW)/2,(Global.height-Global.G_objNY*Global.G_objSizeH)/2+130);
         this.node.setContentSize(Global.G_objNX*Global.G_objSizeW,Global.G_objNY*Global.G_objSizeH);
         this.InitObjectPool();
         this.InitLinePool();
@@ -105,7 +112,9 @@ export default class myGame extends cc.Component {
         this.doubleScore = false;
         this.curAudiobikaID =-1;
         this.CreateBikaAudio();
-        
+        this.HideGameOverLayer();
+        this.IsGameStarted = false;
+        console.log("myGame---------onLoad");
     }
     start () 
     {
@@ -394,7 +403,7 @@ export default class myGame extends cc.Component {
     {
         //---------------------------初始化值--------------------------------//
         //当前局出现过的最大等级值
-        this.GameOver();
+        // this.GameOver();
         this.GameStart();
     }
     GameOver()
@@ -405,6 +414,7 @@ export default class myGame extends cc.Component {
         this.EnabledGame(false);
         this.unschedule(this.timeUpdate);
         this.IsGameStarted = false;
+        this.ShowGameOverLayer();
     }
     EnabledGame(_b = true)
     {
@@ -820,6 +830,14 @@ export default class myGame extends cc.Component {
     {
         
     }
+    TouchStartGame()
+    {
+        if(this.IsGameStarted)
+        {
+            return;
+        }
+        this.GameStart();
+    }
     //**************************************************道具****************************************//
     //双倍积分
     DoubleScore()
@@ -873,6 +891,18 @@ export default class myGame extends cc.Component {
         this.curAudiobikaID = _id;
         
         // cc.audioEngine.play( this.Audio_button, false, 1);
+    }
+    //************************************************结束界面***************************************//
+    ShowGameOverLayer()
+    {
+        this.gameOverlayer.node.active = true; 
+        this.gameOverScore.string = this.Score.toString();
+       
+    }
+    HideGameOverLayer()
+    {
+        this.gameOverlayer.node.active = false;
+        
     }
     //**********************************************************************************************//
     
