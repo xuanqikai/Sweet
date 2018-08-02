@@ -17,6 +17,10 @@ export default class main extends cc.Component {
     @property(cc.Layout)
     PauseLayer: cc.Layout = null;
 
+    //背景图
+    @property([cc.Node])
+    gameBackNode: Array<cc.Node> = [];
+
     @property(cc.Label)
     highscoreLabel: cc.Label = null;
 
@@ -70,12 +74,20 @@ export default class main extends cc.Component {
             _canvas.fitHeight = false;
             _canvas.fitWidth = true;
             console.log("winSize: fitWidth");
+            this.gameBackNode.forEach(element => {
+                element.setScale(_rateV/_rateR);
+                // console.log("winSize: setScale: "+ _rateV/_rateR);
+            });
         }
         else
         {
             _canvas.fitHeight = true;
             _canvas.fitWidth = false;
             console.log("winSize: fitHeight");
+            this.gameBackNode.forEach(element => {
+                element.setScale(_rateR/_rateV);
+                // console.log("winSize: setScale: "+ _rateR/_rateV);
+            });
             
         }
         
@@ -278,7 +290,7 @@ export default class main extends cc.Component {
             window.wx.showShareMenu({withShareTicket: true});//设置分享按钮，方便获取群id展示群排行榜
             this.tex = new cc.Texture2D();
             window.sharedCanvas.width = 720;
-            window.sharedCanvas.height = 560;
+            window.sharedCanvas.height = 1280;
             window.wx.postMessage({
                 messageType: 1,
                 MAIN_MENU_NUM: "x2"
