@@ -248,8 +248,8 @@ export default class main extends cc.Component {
         if(this.openWX && wx)
         {
             wx.shareAppMessage({
-                title: "@你，大家快点来玩Sweet",
-                imageUrl: "res/raw-assets/Texture/back.png",//"http://pic.qiantucdn.com/58pic/22/06/55/57b2d98e109c6_1024.jpg!/fw/1024/watermark/url/L2ltYWdlcy93YXRlcm1hcmsvZGF0dS5wbmc=/repeat/true/crop/0x1024a0a0",
+                title: "震惊!00后放学后发现，校长竟然和王老师一起玩连盟!",
+                imageUrl: "res/raw-assets/Texture/shareAD2.png",//"http://pic.qiantucdn.com/58pic/22/06/55/57b2d98e109c6_1024.jpg!/fw/1024/watermark/url/L2ltYWdlcy93YXRlcm1hcmsvZGF0dS5wbmc=/repeat/true/crop/0x1024a0a0",
                 query: "123456"
               });
         }
@@ -312,6 +312,8 @@ export default class main extends cc.Component {
             this.rankingScrollView.spriteFrame = new cc.SpriteFrame(this.tex);
         }
     }
+
+    
 
     
 }
