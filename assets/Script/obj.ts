@@ -28,6 +28,8 @@ export default class obj extends cc.Component {
     spriteFrame: Array<cc.SpriteFrame> = [];
 
 
+    //动画动作
+    private AnimatArray:Array<Array<any>> = new Array<Array<any>>();
     
     //左下角位置（即最小位置坐标）
     MinPos = cc.p(0,0);
@@ -65,6 +67,7 @@ export default class obj extends cc.Component {
         // this.test(_ppp.clone());
         // console.log("_ppp111 **** ("+_ppp.x+","+_ppp.y+")");
         this.spriteBack.node.opacity = 150;
+        this.CreatAnimat();
     }
     // test(_p:number)
     // {
@@ -118,7 +121,7 @@ export default class obj extends cc.Component {
             }
          })));
          //立刻更改状态，更新地图信息以便mygame获取
-         this.changeState(2);          
+         this.changeState(2);
     }
     //更改状态(coerce 是否强制更新状态)
     changeState(_state:number,coerce:boolean = false)
@@ -273,6 +276,10 @@ export default class obj extends cc.Component {
         }
         // let str = 'obj'+_v +'.png';
         this.mySprite.spriteFrame = this.spriteFrame[_v-1];
+
+        // this.mySprite.spriteFrame = new cc.SpriteFrame('db://assets/Texture/obj3.png');
+
+
         this.spriteBack.spriteFrame = this.spriteFrame[_v-1];
         for (let index = 0; index < 5; index++) 
         {
@@ -332,6 +339,25 @@ export default class obj extends cc.Component {
                 element.node.active = false;
             }
         });
+    }
+    //特效动画
+    CreatAnimat()
+    {
+        // let frame_time = 10;
+        // // 'db://assets/Texture/animal/ani1'
+        // let anim:cc.Animation = this.mySprite.node.addComponent("cc.Animation");
+        // anim.play
+        // //种类
+        // for (let index = 0; index < Global.G_objKind; index++) 
+        // {
+        //     for(let i =0;i<2;i++)
+        //     {
+        //         var act = 'idle';
+        //         var frames = config[actName];
+        //         var clip = cc.AnimationClip.createWithSpriteFrames(frames, frame_time);
+        //         clip.name = 'animat'+index + i;
+        //     }
+        // }
     }
     //****************************************************************************//
 }
