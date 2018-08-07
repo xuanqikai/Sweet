@@ -4,6 +4,7 @@
      * 
      *
  */
+// import {Global}  from './Global';
 const {ccclass, property} = cc._decorator;
 
 @ccclass
@@ -25,6 +26,9 @@ export default class tool extends cc.Component {
     private bannerAd = null;
 
     private rewardedAd = null;
+    //资源
+    IsResLoadComplete = false;
+    AnimalSpriteFrame=new Array<Array<Array<cc.SpriteFrame>>>();
 
     public static getInstance():tool
     {
@@ -138,6 +142,99 @@ export default class tool extends cc.Component {
         // var realUrl = cc.url.raw('resources/obj2.png');
         // var texture = cc.textureCache.addImage(realUrl);
         // this.getComponent(cc.Sprite).spriteFrame.setTexture(texture);
+    }
+    LoadResouseAnimal()
+    {
+        let _name = 'animal';
+        this.IsResLoadComplete = false;
+        //创建spriteFrame的数组
+        this.CreateAnimalSprite();
+        //通过文件路径加载资源
+        cc.loader.loadResDir(_name, cc.SpriteFrame,
+            function (completedCount: number, totalCount: number, item: any)//加载进度
+            {
+                if(completedCount == totalCount)//加载完成
+                {
+                    // this.CreateAnimalSprite();
+                    tool.getInstance().IsResLoadComplete = true;
+                    
+                    console.log("load res : Complete!! "+ tool.getInstance().IsResLoadComplete.toString());
+                }
+            },
+            function (err, assets, urls){
+                if (err) {
+                    cc.error(err);
+                    return;
+                }
+                let _index = 0;
+                //通过正则表达式查找匹配字符串转入数组
+                urls.forEach(element => {
+                    let n=element.match(/\d+/g);
+                    
+                    if(n== null)
+                    {
+                        cc.error("can not find number in string");
+                    }
+                    else{
+                        let n1:number = Number(n[0])-1;
+                        let n2 =0;
+                        if(element.match('blink') == null)
+                        {
+                            n2 = 1;
+                        }
+                        let n3:number = Number(n[1])-1;
+                        tool.getInstance().AnimalSpriteFrame[n1][n2][n3]=(assets[_index]);
+                        console.log("load n : "+n1+" , "+ n2+" , "+ n3);
+                    }
+                    _index++;
+                    // element.
+                    console.log("load res : "+element);
+                });
+            });
+    }
+    GetAnimalSpriteFrameByIndex(_n1,_n2):Array<cc.SpriteFrame>
+    {
+        return this.AnimalSpriteFrame[_n1][_n2];
+    }
+    // LoadResCallBack(err, assets, urls)
+    // {
+    //     if (err) {
+    //         cc.error(err);
+    //         return;
+    //     }
+    //     // var spriteFrame = assets[1];
+    //     let _index = 0;
+    //     urls.forEach(element => {
+    //         let n=element.match(/\d+/g);
+    //         if(n== null)
+    //         {
+    //             cc.error("can not find number in string");
+    //         }
+    //         else{
+    //             this.AnimalSpriteFrame[n[0]-1][n[1]-1] = assets[_index];
+    //             console.log("load n : "+(n[0]-1).toString()+" , "+ (n[1]-1).toString());
+    //         }
+    //         _index++;
+    //         // element.
+    //         console.log("load res : "+element);
+    //     });
+    // }
+    ReleaseResouseAnimal()
+    {
+        let _name = 'animal';
+        cc.loader.releaseResDir(_name, cc.SpriteFrame);
+        this.IsResLoadComplete = false;
+    }
+    CreateAnimalSprite(_kind = 5)
+    {
+        for(var i = 0;i < _kind;i++){
+            this.AnimalSpriteFrame[i] = [];
+            for(var k = 0;k < 2;k++){
+                this.AnimalSpriteFrame[i][k] = [];
+            }
+            this.AnimalSpriteFrame[i].push([]);
+        }
+        this.AnimalSpriteFrame.push([]);
     }
     friendButtonFunc() {
         if (CC_WECHATGAME) {

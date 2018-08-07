@@ -51,6 +51,10 @@ export default class obj extends cc.Component {
     //是否有帽子
     private haveHat = false;
 
+    //动画的执行帧数
+    private animatStep = 0;
+    private curAnimal:cc.SpriteFrame[] = null;
+
 
 
     start () {
@@ -67,7 +71,7 @@ export default class obj extends cc.Component {
         // this.test(_ppp.clone());
         // console.log("_ppp111 **** ("+_ppp.x+","+_ppp.y+")");
         this.spriteBack.node.opacity = 150;
-        this.CreatAnimat();
+        // this.CreatAnimat();
     }
     // test(_p:number)
     // {
@@ -242,6 +246,7 @@ export default class obj extends cc.Component {
         this.node.setPosition(curPos);
         this.SetHatState(false);
 
+        this.RunAnimat(true);
         console.log("picObject---------Birth() _value:"+_value);
     }
     //节点消失
@@ -341,23 +346,58 @@ export default class obj extends cc.Component {
         });
     }
     //特效动画
-    CreatAnimat()
+    RunAnimat(_runDelay = false)
     {
-        // let frame_time = 10;
-        // // 'db://assets/Texture/animal/ani1'
-        // let anim:cc.Animation = this.mySprite.node.addComponent("cc.Animation");
-        // anim.play
-        // //种类
-        // for (let index = 0; index < Global.G_objKind; index++) 
-        // {
-        //     for(let i =0;i<2;i++)
-        //     {
-        //         var act = 'idle';
-        //         var frames = config[actName];
-        //         var clip = cc.AnimationClip.createWithSpriteFrames(frames, frame_time);
-        //         clip.name = 'animat'+index + i;
-        //     }
-        // }
+        if(!_runDelay)
+        {
+            let _v =  Math.floor(Math.random()*2);
+            this.curAnimal = Global.Tool.GetAnimalSpriteFrameByIndex(this.myKind,_v);
+            this.animatStep = this.curAnimal.length+1;
+            this.schedule(this.AnimatUpdate,0.1,this.animatStep);
+        }
+        //下次动画等待时间
+        let _t = 5 + Math.floor(Math.random()*10);
+        this.node.stopAllActions();
+        this.node.runAction(cc.sequence(cc.delayTime(_t),cc.callFunc(this.RunAnimat)));
+        console.log(" RunAnimat ");
     }
+    AnimatUpdate(_dt)
+    {
+        this.animatStep--;
+        if(0 == this.animatStep)
+        {
+            this.mySprite.spriteFrame = this.spriteFrame[this.myKind-1];
+        }
+        else
+        {
+            this.mySprite.spriteFrame = this.curAnimal[this.curAnimal.length-this.animatStep];
+        }
+        console.log(" AnimatUpdate(_dt) ");
+        
+        
+    }
+    // CreatAnimat()
+    // {
+    //     let frame_time = 10;
+    //     // 'db://assets/Texture/animal/ani1'
+    //     //加载特效资源
+    //     let anim:cc.Animation = this.mySprite.node.addComponent("cc.Animation");
+    //     //种类
+    //     for (let index = 0; index < Global.G_objKind; index++) 
+    //     {
+    //         for(let i =0;i<2;i++)
+    //         {
+    //             let frames:[cc.SpriteFrame] ; //= new Array<cc.SpriteFrame>();//Global.Tool.GetAnimalSpriteFrameByIndex(index,i);
+    //             let _arr = Global.Tool.GetAnimalSpriteFrameByIndex(index,i);
+    //             _arr.forEach(element => {
+    //                 frames.push(element);
+    //             });
+    //             console.log("frames ------- "+frames);
+                
+    //             let clip = cc.AnimationClip.createWithSpriteFrames(frames, frame_time);
+    //             // clip.name = "animat";
+    //         }
+    //     }
+    // }
     //****************************************************************************//
 }

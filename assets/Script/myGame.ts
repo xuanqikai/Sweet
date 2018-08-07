@@ -113,6 +113,7 @@ export default class myGame extends cc.Component {
         this.curAudiobikaID =-1;
         this.CreateBikaAudio();
         this.HideGameOverLayer();
+        Global.Tool.LoadResouseAnimal();
         this.IsGameStarted = false;
         console.log("myGame---------onLoad");
     }
@@ -150,6 +151,7 @@ export default class myGame extends cc.Component {
     onDestroy()
     {
         console.log("myGame---------onDestroy()");
+        Global.Tool.LoadResouseAnimal();
         this.DestroyObjectPool();
         this.DestroyLinePool();
         Global.Tool.DestroyObjPool("Number");
