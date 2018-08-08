@@ -33,6 +33,9 @@ export default class myGame extends cc.Component {
     @property([cc.AudioSource])
     Audio_bika:Array<cc.AudioSource> = [];
 
+    //教程手指
+    @property(cc.Sprite)
+    handSprite:cc.Sprite = null;
 
     //是否所有物体进入稳定状态
     IsAllObjectStabilization = 0;
@@ -115,13 +118,15 @@ export default class myGame extends cc.Component {
         this.HideGameOverLayer();
         Global.Tool.LoadResouseAnimal();
         this.IsGameStarted = false;
+        //判断教程
+        this.JudgeCourseStart();
         console.log("myGame---------onLoad");
     }
     start () 
     {
         console.log("myGame---------start");
         this.num = 0;
-        this.GameStart();
+        // this.GameStart();
     }
     onEnable()
     {
@@ -265,6 +270,11 @@ export default class myGame extends cc.Component {
     //*****************************************************定时器***********************************************//
     timeUpdate(_dt)
     {
+        //教程时不进行时间倒计时
+        if(this.isCourse)
+        {
+            return;
+        }
         if(this.remaindTime ==0)
         {
             this.GameOver();
@@ -367,16 +377,15 @@ export default class myGame extends cc.Component {
         //---------------------------初始化值--------------------------------//
         //当前局出现过的最大等级值
         this.CurTopValue = 1;
-
         this.IsGameStarted = true;
         this.remaindTime = 100;
-        this.ResetObject();
-        // this.CurMapValue[0][1] = 2;
-        // this.CreateObject();
+        this.ResetObj();
         this.istouchedMove =0;
         this.timeUpdate(0);
         this.schedule(this.timeUpdate,1);
         this.EnabledGame();
+    
+        console.log(" GameStart() ");
         
         // this.node.on(cc.Node.EventType.TOUCH_MOVE,function(){
         //     console.log("cc.Node.EventType.TOUCH_MOVE");
@@ -403,6 +412,10 @@ export default class myGame extends cc.Component {
     }
     GameReStart()
     {
+        if(this.isCourse)
+        {
+            return;
+        }
         //---------------------------初始化值--------------------------------//
         //当前局出现过的最大等级值
         // this.GameOver();
@@ -620,7 +633,7 @@ export default class myGame extends cc.Component {
                 this.highscoreLabel.string = this.Score.toString();
                 Global.Tool.submitScoreButtonFunc(Global.G_topScore);
             }
-            this.JudgeAutoMove(-1，hatArray);
+            this.JudgeAutoMove(-1,hatArray);
             if(l<5)
             {
                 this.playBikaAudio(1);
@@ -639,6 +652,8 @@ export default class myGame extends cc.Component {
             }
             //去掉划线
             this.lineSprite.node.active = false;
+            //结束教程
+            this.courseOver();
         }
     }
     ChangeLastSelect()
@@ -733,7 +748,7 @@ export default class myGame extends cc.Component {
         return this.CurMapNode[_p.y][_p.x];
     }
     //创建新物体
-    CreateObject(_x:number):cc.Node
+    CreateObject(_x:number,_setvalue = 0):cc.Node
     {
         this.num++;
         // 使用给定的模板在场景中生成一个新节点
@@ -747,11 +762,10 @@ export default class myGame extends cc.Component {
         // 将新增的节点添加到 Canvas 节点下面
         this.objParentNode.addChild(obj,2);
         // console.log("myGame---------obj num: "+ this.num);
-        obj.getComponent('obj').Birth(this.node,_x);
+        obj.getComponent('obj').Birth(this.node,_x,_setvalue);
         // console.log("myGame---------obj num: "+ this.num);
         this.curObj =  obj;
         this.IsAllObjectStabilization++;
-        // console.log("myGame---------CreateObject()");
         return obj;
     }
     //销毁物体
@@ -811,10 +825,17 @@ export default class myGame extends cc.Component {
             }
             for (let y = 0; y < moveH; y++)
             {
-                let obj = this.CreateObject(x);
+                //从上向下行标
+                let _yy = moveH-y-1;
+                //是否设置固定值，自行判断
+                let _setvalue = this.courseSetObjValue(x,_yy);
+                //创建物体
+                let obj = this.CreateObject(x,_setvalue);
                 obj.getComponent('obj').Move(moveH-y,y);
             }
         }
+        //教程时设置不可点击
+        this.courseSetDisableTouchObj();
         //更新皇冠信息
         if(_hatArray.length>0)
         {
@@ -840,15 +861,9 @@ export default class myGame extends cc.Component {
         }
         this.GameStart();
     }
-    //**************************************************道具****************************************//
-    //双倍积分
-    DoubleScore()
+    ResetObj()
     {
-        this.doubleScore = true;
-    }
-    //重置物体
-    ResetObject()
-    {
+        
         this.curAudiobikaID =-1;
         this.removeAllObject();
         //当前地图中物体值信息
@@ -862,6 +877,27 @@ export default class myGame extends cc.Component {
             }
         }
         this.JudgeAutoMove();
+    }
+    //**************************************************道具****************************************//
+    //双倍积分
+    DoubleScorePorp()
+    {
+        if(this.isCourse)
+        {
+            //教程时不能使用道具
+            return;
+        }
+        this.doubleScore = true;
+    }
+    //重置物体
+    ResetObjectPorp()
+    {
+        if(this.isCourse)
+        {
+            //教程时不能使用道具
+            return;
+        }
+        this.ResetObj();
     }
     //**************************************************游戏音效****************************************//
     CreateBikaAudio()
@@ -905,6 +941,137 @@ export default class myGame extends cc.Component {
     {
         this.gameOverlayer.node.active = false;
         
+    }
+    //************************************************教程界面***************************************//
+    //是否在进行教程
+    private isCourse = true;
+    //教程数据(从上向下)
+    private courseData = [[4,5,1,3,5],[4,4,4,1,3],[5,1,2,3,2]];
+    
+    //设置教程数据
+    courseSetObjValue(_x,_yy):number
+    {
+        let _setvalue = 0;
+        if(this.isCourse)
+        {
+            //进行数据设定
+            if( _yy <this.courseData.length)
+            {
+                _setvalue = this.courseData[_yy][_x];
+            }
+        }
+        return _setvalue;
+    }
+    //教程关设置不可点区
+    courseSetDisableTouchObj()
+    {
+        if(!this.isCourse)
+        {
+            return;
+        }
+        for (let y = 0; y < Global.G_objNY; y++) 
+        {
+            for (let x = 0; x < Global.G_objNX; x++) 
+            {
+                let _obj =this.GetMapObjNode(cc.p(x,y));  
+
+                let _value = this.GetMapDate(cc.p(x,y));
+                //规定最后三行value为4的可点击
+                if(Global.G_objNX - y <=3 && 4 == _value)
+                {
+                    continue;
+                }
+                if(_obj)
+                {
+                    _obj.getComponent('obj').changeState(5);
+                }
+            }
+        }
+        this.fingerAnimat();
+        // this.node.runAction(cc.sequence(cc.delayTime(1),cc.callFunc(this.fingerAnimat,this)));
+    }
+    //教程关恢复不可点区
+    courseRecoverTouchObj()
+    {
+        if(!this.isCourse)
+        {
+            return;
+        }
+        for (let y = 0; y < Global.G_objNY; y++) 
+        {
+            for (let x = 0; x < Global.G_objNX; x++) 
+            {
+                let _obj =this.GetMapObjNode(cc.p(x,y));
+                if(_obj)
+                {
+                    let _state = _obj.getComponent('obj').GetState();
+                    if(5 == _state)
+                    {
+                        _obj.getComponent('obj').changeState(2);
+                    }
+                }
+            }
+        }
+    }
+    fingerAnimat()
+    {
+        if(!this.isCourse)
+        {
+            return;
+        }
+        // 手指动画通过
+        let handPath = [cc.v2(0,4),cc.v2(0,3),cc.v2(1,3),cc.v2(2,3)];
+        let _pos:cc.Vec2[] = [];
+        let _action = [];
+        for (let index = 0; index < handPath.length; index++) {
+                _pos[index] = cc.v2(0.5,0.5).add(handPath[index]);
+                _pos[index].x = _pos[index].x*Global.G_objSizeW;
+                _pos[index].y = _pos[index].y*Global.G_objSizeH;
+            
+        }
+        for (let index = 0; index < handPath.length; index++) {
+            _action.push(cc.moveTo(0.5,_pos[index]));
+            
+        }
+        this.handSprite.node.active = true;
+        this.handSprite.node.setLocalZOrder(100);
+        this.handSprite.node.setPosition(_pos[0]);
+        // this.handSprite.node.stopAllActions();
+        this.handSprite.node.runAction(cc.repeatForever(cc.sequence(_action[0],_action[1],cc.delayTime(0.3),_action[2],_action[3],cc.delayTime(0.5))));
+        console.log("fingerAnimat() ");
+        
+    }
+    //判断教程开始
+    JudgeCourseStart()
+    {
+        // 手指动画通过
+        let _n = cc.sys.localStorage.getItem('isCourseOver');
+        _n = null;
+        if(null == _n)
+        {
+            this.isCourse = true;
+        }
+        else{
+            this.isCourse = false;
+            
+        }
+        this.handSprite.node.active = false;
+        // this.fingerAnimat();
+        
+    }
+    //教程结束
+    courseOver()
+    {
+        if(!this.isCourse)
+        {
+            return;
+        }
+        this.courseRecoverTouchObj();
+        this.isCourse = false;
+        this.handSprite.node.stopAllActions();
+        this.handSprite.node.active = this.isCourse;
+        //存储数据
+        cc.sys.localStorage.setItem('isCourseOver',1);
     }
     //**********************************************************************************************//
     

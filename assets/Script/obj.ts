@@ -34,7 +34,7 @@ export default class obj extends cc.Component {
     //左下角位置（即最小位置坐标）
     MinPos = cc.p(0,0);
 
-    //状态：0不存在，1下落（提示），2正常状态，3选中状态，4消失
+    //状态：0不存在，1下落（提示），2正常状态，3选中状态，4消失,5只显示背景不可点击状态
     myState = 0;
     //所在格子位置
     pos = cc.p(-1,-1);
@@ -59,7 +59,7 @@ export default class obj extends cc.Component {
 
     start () {
         //绑定触碰事件
-        // console.log("picObject---------start");
+        console.log("picObject---------start");
         
         // let _ppp = 0;
         // console.log("_ppp000 **** ("+_ppp+")");
@@ -70,7 +70,7 @@ export default class obj extends cc.Component {
         // console.log("_ppp000 **** ("+_ppp.x+","+_ppp.y+")");
         // this.test(_ppp.clone());
         // console.log("_ppp111 **** ("+_ppp.x+","+_ppp.y+")");
-        this.spriteBack.node.opacity = 150;
+        // this.spriteBack.node.opacity = 150;
         // this.CreatAnimat();
     }
     // test(_p:number)
@@ -105,7 +105,7 @@ export default class obj extends cc.Component {
     {
         // console.log("picObject---------upddate()");  
     }
-    //移动：0为下落几个位置
+    //移动：n为下落几个位置
     Move(n:number,_delay:number =0)
     {
         this.changeState(1);
@@ -119,13 +119,11 @@ export default class obj extends cc.Component {
         //移动前停止所有动作
         this.node.stopAllActions();
         //移动完成过后,更改状态
-        this.node.runAction(cc.sequence(dt,action, cc.callFunc(function(){
-            ()=>{
-                // this.changeState(2);
-            }
-         })));
+        this.node.runAction(cc.sequence(dt,action));
          //立刻更改状态，更新地图信息以便mygame获取
          this.changeState(2);
+
+         this.RunAnimat(null,true);
     }
     //更改状态(coerce 是否强制更新状态)
     changeState(_state:number,coerce:boolean = false)
@@ -145,6 +143,7 @@ export default class obj extends cc.Component {
         }
         if(2 == _state)
         {
+            this.mySprite.node.active = true;
             //把当前节点加入地图信息
             this.GetParentScript().UpdateMapDate(this.myKind,this.pos,this.node);
             this.spriteBack.node.setScale(1.0);
@@ -154,10 +153,9 @@ export default class obj extends cc.Component {
         }
         else if(3 == _state)
         {
+            this.mySprite.node.active = true;
             //把当前节点加入地图信息
             this.spriteBack.node.setScale(1.2);
-            
-            // this.spriteBack.isValid = true;
             this.ShowSaleAnimal();
         }
         else if(4 == _state || 1 == _state || 0 == _state)
@@ -166,8 +164,14 @@ export default class obj extends cc.Component {
             this.GetParentScript().UpdateMapDate(0,this.pos,null);
             
         }
-        console.log(" state is :"+_state);
-        console.log(" this.myState is :"+this.myState);
+        else if(5 == _state)
+        {
+            //把当前节点加入地图信息
+            this.mySprite.node.active = false;
+        }
+
+        // console.log(" state is :"+_state);
+        // console.log(" this.myState is :"+this.myState);
         
     }
     GetState():number
@@ -192,7 +196,7 @@ export default class obj extends cc.Component {
         return false;
     }
     //出生
-    Birth(_game:cc.Node,_x:number)
+    Birth(_game:cc.Node,_x:number,_setvalue =0)
     {
         this.gameScene = _game;
 
@@ -237,7 +241,11 @@ export default class obj extends cc.Component {
             num -= RangeProb[index];
         }
         */
-        let _value =  Math.floor(Math.random()*Global.G_objKind +1);
+        let _value = _setvalue;
+        if(0==_value)
+        {
+            _value =  Math.floor(Math.random()*Global.G_objKind +1);
+        }
         this.SetMyKind(_value);
         this.changeState(0);
         //设置位置 this.pos.y*Global.G_objSizeH
@@ -245,8 +253,11 @@ export default class obj extends cc.Component {
         // let _curPos = this.MinPos.add(_p.mul(Global.g));
         this.node.setPosition(curPos);
         this.SetHatState(false);
+        this.spriteEffect.forEach(element => {
+            element.node.active = false;
+        });
 
-        this.RunAnimat(true);
+        // this.RunAnimat(true);
         console.log("picObject---------Birth() _value:"+_value);
     }
     //节点消失
@@ -346,33 +357,47 @@ export default class obj extends cc.Component {
         });
     }
     //特效动画
-    RunAnimat(_runDelay = false)
+    RunAnimat(_target = null,_runDelay = false)
     {
+        let _tag = 10;
         if(!_runDelay)
         {
-            let _v =  Math.floor(Math.random()*2);
-            this.curAnimal = Global.Tool.GetAnimalSpriteFrameByIndex(this.myKind,_v);
+            let _v = 0;
+            if(!this.haveHat)
+            {
+                _v =  Math.floor(Math.random()*2);
+            }
+            this.curAnimal = Global.Tool.GetAnimalSpriteFrameByIndex(this.myKind-1,_v);
+            console.log(" GetAnimalSpriteFrameByIndex : " + this.curAnimal.length);
             this.animatStep = this.curAnimal.length+1;
-            this.schedule(this.AnimatUpdate,0.1,this.animatStep);
+            this.schedule(this.AnimatUpdate,0.15,this.curAnimal.length);
         }
         //下次动画等待时间
-        let _t = 5 + Math.floor(Math.random()*10);
-        this.node.stopAllActions();
-        this.node.runAction(cc.sequence(cc.delayTime(_t),cc.callFunc(this.RunAnimat)));
-        console.log(" RunAnimat ");
+        let _t = 1 + Math.random()*20;
+        this.node.stopActionByTag(_tag);
+        var finish = cc.callFunc(this.RunAnimat, this,false);
+        let _act =cc.sequence(cc.delayTime(_t),finish);
+        _act.setTag(_tag);
+        this.node.runAction(_act);
     }
     AnimatUpdate(_dt)
     {
+        if(this.animatStep > 0)
         this.animatStep--;
+        
         if(0 == this.animatStep)
         {
             this.mySprite.spriteFrame = this.spriteFrame[this.myKind-1];
+            this.SetMyKind(this.myKind);
+            // console.log(" AnimatUpdate(_dt) :000");
+            // console.log(" GetAnimalSpriteFrameByIndex : 000 " );
         }
         else
         {
             this.mySprite.spriteFrame = this.curAnimal[this.curAnimal.length-this.animatStep];
+            // console.log(" GetAnimalSpriteFrameByIndex : step " + (this.curAnimal.length-this.animatStep));
         }
-        console.log(" AnimatUpdate(_dt) ");
+        
         
         
     }
