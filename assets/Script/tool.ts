@@ -75,7 +75,7 @@ export default class tool extends cc.Component {
         cc.log("getMyScore():----------------------------------------- ");
         let _n = cc.sys.localStorage.getItem('topScore');
         cc.log("getMyScore():----------------------------------------- " + _n);
-        if(null == _n)
+        if(!_n || null == _n)
         {
             return 0;
         }

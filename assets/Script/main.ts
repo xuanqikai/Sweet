@@ -13,6 +13,10 @@ export default class main extends cc.Component {
     @property(cc.Layout)
     mainScene: cc.Layout = null;
 
+    //游戏主逻辑界面
+    @property(cc.Layout)
+    myGame: cc.Layout = null;
+
     //暂停界面
     @property(cc.Layout)
     PauseLayer: cc.Layout = null;
@@ -90,7 +94,7 @@ export default class main extends cc.Component {
             });
             
         }
-        
+        console.log(" 0000 main---------onLoad");
     }
     start () {
         // init logic
@@ -116,6 +120,7 @@ export default class main extends cc.Component {
         //     shareTicket: res.shareTickets[0],
         //     success: this.shareCallBack
         // });
+        console.log(" 0000 main---------start");
     }
     onEnable()
     {
@@ -160,7 +165,7 @@ export default class main extends cc.Component {
     InitMusicState()
     {
         let _n = cc.sys.localStorage.getItem('music');
-        if(_n == 0)
+        if(!_n || _n == 0)
         {
             Global.G_musicOn = false;
         }

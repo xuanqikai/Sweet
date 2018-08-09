@@ -368,7 +368,7 @@ export default class obj extends cc.Component {
                 _v =  Math.floor(Math.random()*2);
             }
             this.curAnimal = Global.Tool.GetAnimalSpriteFrameByIndex(this.myKind-1,_v);
-            console.log(" GetAnimalSpriteFrameByIndex : " + this.curAnimal.length);
+            // console.log(" GetAnimalSpriteFrameByIndex : " + this.curAnimal.length);
             this.animatStep = this.curAnimal.length+1;
             this.schedule(this.AnimatUpdate,0.15,this.curAnimal.length);
         }
@@ -388,7 +388,7 @@ export default class obj extends cc.Component {
         if(0 == this.animatStep)
         {
             this.mySprite.spriteFrame = this.spriteFrame[this.myKind-1];
-            this.SetMyKind(this.myKind);
+            // this.SetMyKind(this.myKind);
             // console.log(" AnimatUpdate(_dt) :000");
             // console.log(" GetAnimalSpriteFrameByIndex : 000 " );
         }

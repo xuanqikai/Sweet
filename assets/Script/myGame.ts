@@ -2,7 +2,6 @@ const {ccclass, property} = cc._decorator;  // 从 cc._decorator 命名空间中
 
 import {Global,Scene}  from './Global';
 import obj from './obj';
-import main from './main';
 @ccclass
 export default class myGame extends cc.Component {
 
@@ -33,6 +32,10 @@ export default class myGame extends cc.Component {
     @property([cc.AudioSource])
     Audio_bika:Array<cc.AudioSource> = [];
 
+    //道具按钮
+    @property([cc.Button])
+    porpButton:Array<cc.Button> = [];
+
     //教程手指
     @property(cc.Sprite)
     handSprite:cc.Sprite = null;
@@ -40,7 +43,7 @@ export default class myGame extends cc.Component {
     //是否所有物体进入稳定状态
     IsAllObjectStabilization = 0;
     //当前局出现过的最大等级值
-    private CurTopValue = 1;
+    // private CurMaxCombo = 0;
     //当前地图中物体值信息
     private CurMapValue:Array<Array<any>> = new Array<Array<any>>();
     private CurMapNode:Array<Array<cc.Node>>  = new Array<Array<cc.Node>>();
@@ -77,7 +80,12 @@ export default class myGame extends cc.Component {
     //游戏是否开始
     private IsGameStarted = false;
 
+    //划线颜色
     private lineColor = cc.color(255,255,255);
+    //黑色半透明背景，用来突出某些物体
+    private blackBack:cc.Node = null;
+    //action延时父节点
+    private delayActionNode:cc.Node = null;
 
     //***********************************************初始化脚本***********************************************//
     onLoad()
@@ -97,7 +105,14 @@ export default class myGame extends cc.Component {
            this.CurMapNode[i] = [];
         }
         this.CurMapNode.push([]);
-        if(this.objParentNode || !cc.isValid(this.objParentNode))
+        //动作执行父节点
+        if(null == this.delayActionNode)
+        {
+            this.delayActionNode =new cc.Node();
+            this.node.addChild(this.delayActionNode);
+        }
+        //游戏物体父节点
+        if(!this.objParentNode || !cc.isValid(this.objParentNode))
         {
             this.objParentNode =new cc.Node();
             console.log("create objParentNode");
@@ -107,6 +122,23 @@ export default class myGame extends cc.Component {
         this.node.setAnchorPoint(cc.p(0,0));
         this.node.setPosition((Global.width-Global.G_objNX*Global.G_objSizeW)/2,(Global.height-Global.G_objNY*Global.G_objSizeH)/2+130);
         this.node.setContentSize(Global.G_objNX*Global.G_objSizeW,Global.G_objNY*Global.G_objSizeH);
+        
+        // //黑色背景层
+        // if(null == this.blackBack || !cc.isValid(this.blackBack))
+        // {
+        //     this.blackBack = new cc.Node();
+        //     this.blackBack.addComponent(cc.Sprite);
+        //     this.blackBack.color =cc.color(0,0,0);
+        //     // this.blackBack.opacity = 150;
+        //     this.objParentNode.addChild(this.blackBack,100);
+        //     this.blackBack.setContentSize(cc.director.getVisibleSize());
+        //     this.blackBack.active = true;
+        // }
+        //读取最大连击数
+        this.ReradMaxCombo();
+        //读取道具数量
+        this.ReadPorpNumber();
+
         this.InitObjectPool();
         this.InitLinePool();
         Global.Tool.CreateObjPool("Number",this.addScoreNumber.node,5);
@@ -120,11 +152,11 @@ export default class myGame extends cc.Component {
         this.IsGameStarted = false;
         //判断教程
         this.JudgeCourseStart();
-        console.log("myGame---------onLoad");
+        console.log(" 0000 myGame---------onLoad");
     }
     start () 
     {
-        console.log("myGame---------start");
+        console.log(" 0000 myGame---------start");
         this.num = 0;
         // this.GameStart();
     }
@@ -375,8 +407,7 @@ export default class myGame extends cc.Component {
     GameStart()
     {
         //---------------------------初始化值--------------------------------//
-        //当前局出现过的最大等级值
-        this.CurTopValue = 1;
+        //当前局出现过的最大连线
         this.IsGameStarted = true;
         this.remaindTime = 100;
         this.ResetObj();
@@ -414,6 +445,7 @@ export default class myGame extends cc.Component {
     {
         if(this.isCourse)
         {
+            this.GameResume();
             return;
         }
         //---------------------------初始化值--------------------------------//
@@ -654,6 +686,8 @@ export default class myGame extends cc.Component {
             this.lineSprite.node.active = false;
             //结束教程
             this.courseOver();
+            //存储最大连击数据
+            this.AutoSetCurTopValue(l);
         }
     }
     ChangeLastSelect()
@@ -705,12 +739,17 @@ export default class myGame extends cc.Component {
     //自动确定最大级别
     AutoSetCurTopValue(_value:number)
     {
-        this.CurTopValue = _value>this.CurTopValue?_value:this.CurTopValue;
+       if(_value <= Global.G_maxCombo )
+       {
+           return;
+       }
+       Global.G_maxCombo = _value;
+       this.StoreMaxCombo();
     }
     //获取最大级别
     GetCurTopValue():number
     {
-        return this.CurTopValue;
+        return  Global.G_maxCombo;
     }
     //更新地图信息
     UpdateMapDate(_value:number,_p:cc.Vec2,_node:cc.Node)
@@ -879,16 +918,6 @@ export default class myGame extends cc.Component {
         this.JudgeAutoMove();
     }
     //**************************************************道具****************************************//
-    //双倍积分
-    DoubleScorePorp()
-    {
-        if(this.isCourse)
-        {
-            //教程时不能使用道具
-            return;
-        }
-        this.doubleScore = true;
-    }
     //重置物体
     ResetObjectPorp()
     {
@@ -897,7 +926,143 @@ export default class myGame extends cc.Component {
             //教程时不能使用道具
             return;
         }
+        if(!this.UsePorp(0))
+        {
+            console.log("have no porp!");
+            return;
+        }
         this.ResetObj();
+    }
+    //双倍积分
+    DoubleScorePorp()
+    {
+        if(this.isCourse)
+        {
+            //教程时不能使用道具
+            return;
+        }
+        if(this.doubleScore)
+        {
+            return;
+        }
+        if(!this.UsePorp(1))
+        {
+            console.log("have no porp!");
+            return;
+        }
+        this.doubleScore = true;
+        
+    }
+    //-----------------------------最大连线的存储----------------------------------//
+    ReradMaxCombo()
+    {
+        Global.G_maxCombo = 0;
+        let _s = cc.sys.localStorage.getItem('MaxCombo');
+        if(!_s || null == _s)
+        {
+            return;
+        }
+        Global.G_maxCombo = _s;
+    }
+    StoreMaxCombo()
+    {
+        cc.sys.localStorage.setItem('MaxCombo', Global.G_maxCombo);
+    }
+    //-----------------------------道具的存储----------------------------------//
+    //读取道具数量
+    ReadPorpNumber()
+    {
+        // cc.sys.localStorage.removeItem('porpData');
+        let _s = cc.sys.localStorage.getItem('porpData');
+        // console.log("ChangePorpState : ReadPorpNumber : "+_s);
+        if(!_s || null == _s)
+        {
+            for (let index = 0; index < this.porpButton.length; index++) 
+            {
+                Global.G_porpN[index] = 3;
+                // console.log("ChangePorpState : p : "+ Global.G_porpN[index] );
+            }
+            // console.log("ChangePorpState : porpButton.length  "+ this.porpButton.length );
+        }
+        else{
+            let porpData = JSON.parse(_s);
+            // console.log("ChangePorpState : p0 : "+ porpData.p0 +" p1 : " +porpData.p1 );
+            Global.G_porpN[0] = porpData.p0;
+            Global.G_porpN[1] = porpData.p1;
+        }
+        // console.log("ChangePorpState : ReadPorpNumber");
+        
+        this.ChangePorpState();
+    }
+    //存储道具数量
+    StorePorpNumber()
+    {
+        this.delayActionNode.stopActionByTag(1);
+        let _action = cc.sequence(cc.delayTime(0.1),cc.callFunc(function()
+        {
+            let porpData = {
+                p0: Global.G_porpN[0],
+                p1: Global.G_porpN[1]
+            };
+            // console.log("StorePorpNumber : "+JSON.stringify(porpData));
+            
+            cc.sys.localStorage.setItem('porpData',  JSON.stringify(porpData));
+            // console.log("ChangePorpState : StorePorpNumber");
+            this.ChangePorpState();
+        },this));
+        _action.setTag(1);
+        this.delayActionNode.runAction(_action);
+
+        
+    }
+    //获得道具
+    GetPorp(id,_n = 1)
+    {
+        Global.G_porpN[id] += _n;
+        this.StorePorpNumber();
+        //存储道具加延时，防止同时调用多次影响游戏使用
+        // this.delayActionNode.stopActionByTag(1);
+        // let _action = cc.sequence(cc.delayTime(0.1),cc.callFunc(this.StorePorpNumber,this));
+        // _action.setTag(1);
+        // this.delayActionNode.runAction(_action);
+    }
+    //使用道具
+    UsePorp(id,_n = 1):boolean
+    {
+        if(0==Global.G_porpN[id] )
+        {
+            return false;
+        }
+        Global.G_porpN[id] -= _n;
+        this.StorePorpNumber();
+        //存储道具加延时，防止同时调用多次影响游戏使用
+        // this.delayActionNode.stopActionByTag(1);
+        // let _action = cc.sequence(cc.delayTime(0.1),cc.callFunc(this.StorePorpNumber,this));
+        // _action.setTag(1);
+        // this.delayActionNode.runAction(_action);
+        return true;
+    }
+    ChangePorpState()
+    {
+        // console.log("ChangePorpState() length : "+Global.G_porpN.length);
+        
+        for (let index = 0; index < this.porpButton.length; index++) 
+        {
+            // console.log("ChangePorpState index : "+index);
+            
+            let _lable = this.porpButton[index].getComponentInChildren(cc.Label);
+            if(0== Global.G_porpN[index] || this.isCourse)
+            {
+                this.porpButton[index].interactable = false;
+                _lable.node.active = false;
+            }
+            else{
+                this.porpButton[index].interactable = true;
+                _lable.node.active = true;
+                // console.log("ChangePorpState G_porpN : "+Global.G_porpN.toString());
+                _lable.string = Global.G_porpN[index].toString();
+            }
+        }
     }
     //**************************************************游戏音效****************************************//
     CreateBikaAudio()
@@ -987,8 +1152,8 @@ export default class myGame extends cc.Component {
                 }
             }
         }
-        this.fingerAnimat();
-        // this.node.runAction(cc.sequence(cc.delayTime(1),cc.callFunc(this.fingerAnimat,this)));
+        // this.fingerAnimat();
+        this.node.runAction(cc.sequence(cc.delayTime(1),cc.callFunc(this.fingerAnimat,this)));
     }
     //教程关恢复不可点区
     courseRecoverTouchObj()
@@ -1046,8 +1211,8 @@ export default class myGame extends cc.Component {
     {
         // 手指动画通过
         let _n = cc.sys.localStorage.getItem('isCourseOver');
-        _n = null;
-        if(null == _n)
+        // _n = null;
+        if(!_n || null == _n)
         {
             this.isCourse = true;
         }
@@ -1055,6 +1220,7 @@ export default class myGame extends cc.Component {
             this.isCourse = false;
             
         }
+        this.ChangePorpState();
         this.handSprite.node.active = false;
         // this.fingerAnimat();
         
@@ -1072,6 +1238,7 @@ export default class myGame extends cc.Component {
         this.handSprite.node.active = this.isCourse;
         //存储数据
         cc.sys.localStorage.setItem('isCourseOver',1);
+        this.ChangePorpState();
     }
     //**********************************************************************************************//
     
