@@ -101,7 +101,7 @@ export default class tool extends cc.Component {
         console.log("-------------------InitObjectPool()-------------------");
         
     }
-    GetObjPool(_name:string):cc.Node
+    GetObjByPool(_name:string):cc.Node
     {
         let  _objPoll = this.ObjectPoolMap[_name];
         if(!_objPoll)

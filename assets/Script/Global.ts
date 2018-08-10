@@ -21,8 +21,8 @@ export class Global
     //宽高
     // static G_objSizeW:number = 105;
     // static G_objSizeH:number = 120;
-    static G_objSizeW:number = 120;
-    static G_objSizeH:number = 113;
+    static G_objSizeW:number = 130;
+    static G_objSizeH:number = 130;
     //最高分
     static G_topScore:number = 0;
     //声音开关

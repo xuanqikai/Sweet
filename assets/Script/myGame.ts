@@ -2,11 +2,14 @@ const {ccclass, property} = cc._decorator;  // 从 cc._decorator 命名空间中
 
 import {Global,Scene}  from './Global';
 import obj from './obj';
+import encourage from './encourage';
 @ccclass
 export default class myGame extends cc.Component {
 
     @property(cc.Prefab)
     objPrefab: cc.Prefab = null;
+    @property(cc.Prefab)
+    encouragePrefab: cc.Prefab = null;
     @property(cc.Label)
     scoreLabel: cc.Label = null;
 
@@ -15,6 +18,9 @@ export default class myGame extends cc.Component {
 
     @property(cc.Label)
     highscoreLabel: cc.Label = null;
+
+    @property(cc.Label)
+    maxComboLabel: cc.Label = null;
 
     @property(cc.Label)
     addScoreNumber: cc.Label = null;
@@ -39,6 +45,13 @@ export default class myGame extends cc.Component {
     //教程手指
     @property(cc.Sprite)
     handSprite:cc.Sprite = null;
+
+    //游戏结束时的视频复活和重新开始按钮
+    @property(cc.Button)
+    reviveButton:cc.Button = null;
+
+    @property(cc.Button)
+    restartButton:cc.Button = null;
 
     //是否所有物体进入稳定状态
     IsAllObjectStabilization = 0;
@@ -68,6 +81,7 @@ export default class myGame extends cc.Component {
     private touchPos = cc.v2(-1,-1);
     private num = 0;
     private Score = 0;
+    private lastShowScore = 0;
     private doubleScore = false;
     private curAudiobikaID = -1;
     //音效
@@ -120,7 +134,7 @@ export default class myGame extends cc.Component {
         this.node.addChild(this.objParentNode);
         //游戏内物体块父类
         this.node.setAnchorPoint(cc.p(0,0));
-        this.node.setPosition((Global.width-Global.G_objNX*Global.G_objSizeW)/2,(Global.height-Global.G_objNY*Global.G_objSizeH)/2+130);
+        this.node.setPosition((Global.width-Global.G_objNX*Global.G_objSizeW)/2,(Global.height-Global.G_objNY*Global.G_objSizeH)/2+110);
         this.node.setContentSize(Global.G_objNX*Global.G_objSizeW,Global.G_objNY*Global.G_objSizeH);
         
         // //黑色背景层
@@ -142,8 +156,10 @@ export default class myGame extends cc.Component {
         this.InitObjectPool();
         this.InitLinePool();
         Global.Tool.CreateObjPool("Number",this.addScoreNumber.node,5);
+        encourage.CreatePrePool(this.encouragePrefab);
         this.isGameRunning = false;
         this.Score = 0;
+        this.lastShowScore = 0;
         this.doubleScore = false;
         this.curAudiobikaID =-1;
         this.CreateBikaAudio();
@@ -152,6 +168,9 @@ export default class myGame extends cc.Component {
         this.IsGameStarted = false;
         //判断教程
         this.JudgeCourseStart();
+        //没广告时隐藏复活按钮调整重新开始位置
+        this.restartButton.node.setPositionY((this.restartButton.node.position.y+this.reviveButton.node.position.y)/2);
+        this.reviveButton.node.active = false;
         console.log(" 0000 myGame---------onLoad");
     }
     start () 
@@ -184,6 +203,20 @@ export default class myGame extends cc.Component {
         //     }
         //     this.CreateObject();
         // }
+        if(this.Score > this.lastShowScore)
+        {
+            this.lastShowScore++;
+            this.scoreLabel.string = this.lastShowScore.toString();
+            if(this.Score == this.lastShowScore)
+            {
+                this.scoreLabel.node.scale = 1.0;
+                // this.scoreLabel.node.stopAllActions();
+            }
+            else{
+                this.scoreLabel.node.scale = 1.8;
+                // this.scoreLabel.node.runAction(cc.repeatForever(cc.));
+            }
+        }
     }
     onDestroy()
     {
@@ -192,6 +225,7 @@ export default class myGame extends cc.Component {
         this.DestroyObjectPool();
         this.DestroyLinePool();
         Global.Tool.DestroyObjPool("Number");
+        encourage.DestroyPrePool();
         if(this.objParentNode && cc.isValid(this.objParentNode))
         {
             this.objParentNode.destroy();
@@ -666,17 +700,27 @@ export default class myGame extends cc.Component {
                 Global.Tool.submitScoreButtonFunc(Global.G_topScore);
             }
             this.JudgeAutoMove(-1,hatArray);
-            if(l<5)
+            let _startpos = cc.v2(this.node.getContentSize().width/2,this.node.getContentSize().height/2+150);
+            if(l<5) 
             {
                 this.playBikaAudio(1);
+                if(l>3)
+                {
+                    //鼓励语动画
+                    encourage.RunAction(this.node,0,_startpos);
+                }
             }
             else if(l<8)
             {
                 this.playBikaAudio(2);
+                //鼓励语动画
+                encourage.RunAction(this.node,1,_startpos);
             }
             else
             {
                 this.playBikaAudio(3);
+                //鼓励语动画
+                encourage.RunAction(this.node,2,_startpos);
             }
             while(this.SelectLine.length >0)
             {
@@ -702,19 +746,21 @@ export default class myGame extends cc.Component {
     {
         this.doubleScore = false;
         this.Score = 0;
+        this.lastShowScore = 0;
+        this.scoreLabel.string = this.lastShowScore.toString();
         this.AddScore(0);
     }
     //加分_p为显示分数特效位置
     AddScore(_s:number,_p:cc.Vec2 =cc.p(-1,-1))
     {
         this.Score +=_s;
-        this.scoreLabel.string = this.Score.toString();
+        // this.scoreLabel.string = this.Score.toString();
         if(_s<=0)
         {
             return;
         }
         //显示加分数字
-        let _numberNode = Global.Tool.GetObjPool("Number"); 
+        let _numberNode = Global.Tool.GetObjByPool("Number"); 
         this.objParentNode.addChild(_numberNode,5);
         _numberNode.active = true;
         let _lable:cc.Label = _numberNode.getComponent("cc.Label");
@@ -744,6 +790,22 @@ export default class myGame extends cc.Component {
            return;
        }
        Global.G_maxCombo = _value;
+       //鼓励语动画
+       let _startpos = cc.v2(this.node.getContentSize().width/2,this.node.getContentSize().height/2+300);
+       let _endpos = this.maxComboLabel.node.parent.getPosition().sub(this.node.getPosition());
+       console.log("_endpos is : "+_endpos.toString());
+       
+       encourage.RunAction(this.node,3,_startpos,_endpos);
+
+       this.maxComboLabel.string = _value.toString();
+       this.maxComboLabel.node.stopAllActions();
+    //    this.macComboLabel.node.runAction(cc.repeat(cc.sequence(cc.spawn(cc.scaleTo(0.3,4),cc.fadeOut(0.3)),cc.callFunc(function(target){
+    //     //    console.log("macComboLabel action "); 
+    //        target.scale = 1;
+    //        target.opacity = 255;
+    //    })),3));
+        
+       this.maxComboLabel.node.runAction(cc.sequence(cc.scaleTo(0.4,3),cc.scaleTo(0.3,1)));
        this.StoreMaxCombo();
     }
     //获取最大级别
@@ -957,12 +1019,15 @@ export default class myGame extends cc.Component {
     ReradMaxCombo()
     {
         Global.G_maxCombo = 0;
+        cc.sys.localStorage.removeItem('MaxCombo');
         let _s = cc.sys.localStorage.getItem('MaxCombo');
-        if(!_s || null == _s)
+        if(_s && null != _s)
         {
-            return;
+            Global.G_maxCombo = _s;
         }
-        Global.G_maxCombo = _s;
+        console.log("ReradMaxCombo : "+Global.G_maxCombo);
+        
+        this.maxComboLabel.string = Global.G_maxCombo.toString();
     }
     StoreMaxCombo()
     {
